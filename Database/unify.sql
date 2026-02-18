@@ -1,5 +1,5 @@
 -- create table for users
-CREATE TABLE user(
+CREATE TABLE users(
     user_id SERIAL PRIMARY KEY,
     up_number VARCHAR(20) NOT NULL UNIQUE,
     admin_id INT, -- for admin users, this will be NULL for regular users 
@@ -11,13 +11,13 @@ CREATE TABLE user(
 )
 --intersection table 
 CREATE TABLE membership (
-    membership_id SERAL PRIMARY KEY,
+    membership_id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
     society_id INT NOT NULL,
     role VARCHAR(50) NOT NULL,
         CHECK (role IN ('member', 'admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
 )
 
 -- create table for societies
@@ -52,10 +52,10 @@ CREATE TABLE poll_option(
 CREATE TABLE poll_vote(
     vote_id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
-    ppoll_id INT NOT NULL,
+    poll_id INT NOT NULL,
     option_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (option_id) REFERENCES poll_option(option_id) ON DELETE CASCADE,
     FOREIGN KEY (ppoll_id) REFERENCES poll(poll_id) ON DELETE CASCADE,
     UNIQUE (user_id, option_id, ppoll_id)
@@ -70,7 +70,7 @@ CREATE TABLE review(
     comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (society_id) REFERENCES society(society_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 )   
 
 --create table for users review reactions
@@ -80,7 +80,7 @@ CREATE TABLE review_reaction(
     review_id INT NOT NULL,
     reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN ('like', 'dislike')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (review_id) REFERENCES review(review_id) ON DELETE CASCADE
 ) 
 
@@ -93,12 +93,12 @@ CREATE TABLE review_response(
     response_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (review_id) REFERENCES review(review_id) ON DELETE CASCADE,
-    FOREIGN KEY (society_id) REFERENCES society(society_id) ON DELETE CASCADE
-    FOREIGN KEY (admin_id) REFERENCES user(user_id) ON DELETE CASCADE
+    FOREIGN KEY (society_id) REFERENCES society(society_id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id) ON DELETE CASCADE
 )   
 
 --helps to speed up quereis that filer by these entities, improving speed of application
-INDEX idx_user_email ON user(email);
+INDEX idx_user_email ON users(email);
 INDEX idx_society_name ON society(name);
 INDEX idx_poll_society ON poll(society_id);
 INDEX idx_poll_option_poll ON poll_option(poll_id);
