@@ -129,6 +129,11 @@ class _SocietiesPageState extends State<SocietiesPage> {
                                 return ListTile(
                                   leading: const Icon(Icons.groups),
                                   title: Text(name),
+                                  subtitle: Text(
+                                    _descriptions[name] ?? 'Description coming soon.',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   onTap: () {
                                     setState(() {
                                       _searchController.text = name;
@@ -155,7 +160,11 @@ class _SocietiesPageState extends State<SocietiesPage> {
                   child: ListTile(
                     leading: CircleAvatar(child: Text(name[0])),
                     title: Text(name),
-                    subtitle: const Text('Placeholder description to fill space'),
+                    subtitle: Text(
+                      _descriptions[name] ?? 'Description coming soon.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
