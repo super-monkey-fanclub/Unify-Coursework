@@ -11,20 +11,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unify_frontend/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Homepage displays correctly', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const UnifyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the app bar is displayed with correct title.
+    expect(find.text('Unify'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify that the About Us button is present.
+    expect(find.text('About Us'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the Join button is present.
+    expect(find.text('Join a society today'), findsOneWidget);
+
+    // Verify at least one society name is displayed.
+    expect(find.textContaining('Society'), findsWidgets);
   });
 }
