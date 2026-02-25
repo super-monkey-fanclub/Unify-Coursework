@@ -3,3 +3,6 @@ Create a homepage for a website. The website is primarily focused on University 
 
 We want to create a login screen that uses a database to store logins. We have the beginnings of the database in the Database folder, and the start of a backend using Django in the backend folder. The plan is to have a login and signup page, with the signup page appending to the database with new credentials, and the login page checking saved credentials and accepting or failing login requests. How would we go about this?
 (Claude Sonnet 4.5 Ask Mode)
+
+
+When the user clicks the about us button on the main page, they should be led to an about us page with relevant information, for now the information should be placeholder information.(Claude Sonnet 4.6 Agent Mode)
