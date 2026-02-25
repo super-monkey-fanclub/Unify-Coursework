@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'profile.dart';
 import 'socieites.dart';
+import 'about_us.dart'; // Add this import
 
 void main() {
   runApp(const UnifyApp());
@@ -97,7 +98,9 @@ class _HomePageState extends State<HomePage> {
           ),
           TextButton(
             onPressed: () {
-              // Placeholder for About Us navigation
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AboutUsPage(), // Replace placeholder comment
+              ));
             },
             child: const Text(
               'About Us',

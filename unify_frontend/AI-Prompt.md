@@ -6,3 +6,6 @@ We want to create a login screen that uses a database to store logins. We have t
 
 ON the profile page, add a "Not a member? Sign up now" button. This should change the contents of the page to a signup page with 4 parameters - Preferred name, email, password, confirm password. Preferred name should have a limit of 50 characters, email should have a . and the @ symbol, and password and confirm password should be identical. Add the parameter checking to the login screen also, and turn the password inputter characters into asterisks for privay.
 (Claude Sonnet 4.5 Agent mode)
+
+
+When the user clicks the about us button on the main page, they should be led to an about us page with relevant information, for now the information should be placeholder information.(Claude Sonnet 4.6 Agent Mode)
