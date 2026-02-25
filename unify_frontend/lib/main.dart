@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'profile.dart';
+import 'socieites.dart';
 
 void main() {
   runApp(const UnifyApp());
@@ -25,8 +27,50 @@ class UnifyApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final TextEditingController _searchController = TextEditingController();
+  final List<String> _placeholderItems = [
+    'Art Society',
+    'Anime Society',
+    'Gaming Society',
+    'Music Society',
+    'Photography Club',
+  ];
+  late List<String> _filteredItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredItems = List.from(_placeholderItems);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredItems = List.from(_placeholderItems);
+      } else {
+        _filteredItems = _placeholderItems
+            .where((s) => s.toLowerCase().contains(query))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +86,15 @@ class HomePage extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Account',
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AuthPage(),
+              ));
+            },
+            icon: const Icon(Icons.person, color: Colors.white),
+          ),
           TextButton(
             onPressed: () {
               // Placeholder for About Us navigation
@@ -55,30 +108,120 @@ class HomePage extends StatelessWidget {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (value) {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => SearchResultsPage(
+                    query: value,
+                    items: _placeholderItems,
+                  ),
+                ));
+              },
+              decoration: InputDecoration(
+                hintText: 'Search societies, e.g. "Art", "Gaming"',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SearchResultsPage(
+                        query: _searchController.text,
+                        items: _placeholderItems,
+                      ),
+                    ));
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+              ),
+            ),
+          ),
           const Expanded(child: HeroCarousel()),
           Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: ElevatedButton(
-              onPressed: () {
-                // Placeholder for login/join navigation
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 48,
-                  vertical: 20,
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SocietiesPage(),
+                    ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Find societies'),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const AuthPage(),
+                    ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 48,
+                      vertical: 16,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Join a society today'),
                 ),
-              ),
-              child: const Text('Join a society today'),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildResultsList() {
+    if (_filteredItems.isEmpty) {
+      return Center(
+        child: Text(
+          'No results',
+          style: TextStyle(color: Colors.grey.shade600),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      itemCount: _filteredItems.length,
+      separatorBuilder: (_, __) => const Divider(),
+      itemBuilder: (context, index) {
+        final item = _filteredItems[index];
+        return ListTile(
+          leading: const CircleAvatar(child: Icon(Icons.groups)),
+          title: Text(item),
+          subtitle: const Text('Placeholder description'),
+          onTap: () {
+            // Placeholder: navigate to society details
+          },
+        );
+      },
     );
   }
 }
@@ -256,4 +399,62 @@ class Society {
     required this.rating,
     // this.imageUrl,
   });
+}
+
+class SearchResultsPage extends StatefulWidget {
+  final String query;
+  final List<String> items;
+
+  const SearchResultsPage({super.key, required this.query, required this.items});
+
+  @override
+  State<SearchResultsPage> createState() => _SearchResultsPageState();
+}
+
+class _SearchResultsPageState extends State<SearchResultsPage> {
+  late List<String> _results;
+
+  @override
+  void initState() {
+    super.initState();
+    final q = widget.query.toLowerCase();
+    if (q.isEmpty) {
+      _results = List.from(widget.items);
+    } else {
+      _results = widget.items.where((i) => i.toLowerCase().contains(q)).toList();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Search: "${widget.query}"'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+      body: _results.isEmpty
+          ? Center(
+              child: Text(
+                'No results for "${widget.query}"',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(12.0),
+              itemCount: _results.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final item = _results[index];
+                return ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.groups)),
+                  title: Text(item),
+                  subtitle: const Text('Placeholder description'),
+                  onTap: () {
+                    // Placeholder: navigate to details
+                  },
+                );
+              },
+            ),
+    );
+  }
 }
