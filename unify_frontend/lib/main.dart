@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'profile.dart';
+import 'socieites.dart';
 
 void main() {
   runApp(const UnifyApp());
@@ -145,23 +146,50 @@ class _HomePageState extends State<HomePage> {
           const Expanded(child: HeroCarousel()),
           Padding(
             padding: const EdgeInsets.all(24.0),
-            child: ElevatedButton(
-              onPressed: () {
-                // Placeholder for login/join navigation
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 48,
-                  vertical: 16,
+            child: Column(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SocietiesPage(),
+                    ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Find societies'),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const AuthPage(),
+                    ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 48,
+                      vertical: 16,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Join a society today'),
                 ),
-              ),
-              child: const Text('Join a society today'),
+              ],
             ),
           ),
         ],
