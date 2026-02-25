@@ -3,3 +3,6 @@ Create a homepage for a website. The website is primarily focused on University 
 
 We want to create a login screen that uses a database to store logins. We have the beginnings of the database in the Database folder, and the start of a backend using Django in the backend folder. The plan is to have a login and signup page, with the signup page appending to the database with new credentials, and the login page checking saved credentials and accepting or failing login requests. How would we go about this?
 (Claude Sonnet 4.5 Ask Mode)
+
+ON the profile page, add a "Not a member? Sign up now" button. This should change the contents of the page to a signup page with 4 parameters - Preferred name, email, password, confirm password. Preferred name should have a limit of 50 characters, email should have a . and the @ symbol, and password and confirm password should be identical. Add the parameter checking to the login screen also, and turn the password inputter characters into asterisks for privay.
+(Claude Sonnet 4.5 Agent mode)
