@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'services/auth_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -10,7 +11,9 @@ class AuthPage extends StatefulWidget {
 
 class _AuthPageState extends State<AuthPage> {
   bool _showSignUp = false;
+  bool _isLoading = false;
 
+  final _authService = AuthService();
   final _loginKey = GlobalKey<FormState>();
   final _regKey = GlobalKey<FormState>();
 
@@ -83,12 +86,32 @@ class _AuthPageState extends State<AuthPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                if (_loginKey.currentState!.validate()) {
-                  _showMessage('Login not yet implemented');
-                }
-              },
-              child: const Text('Login'),
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (!_loginKey.currentState!.validate()) return;
+                      setState(() => _isLoading = true);
+                      final result = await _authService.login(
+                        email: _loginEmail.text.trim(),
+                        password: _loginPassword.text,
+                      );
+                      if (!mounted) return;
+                      setState(() => _isLoading = false);
+                      if (result['success'] == true) {
+                        final user = result['user'] as Map<String, dynamic>;
+                        _showMessage('Welcome back, ${user['name']}!');
+                        Navigator.pop(context);
+                      } else {
+                        _showMessage(result['message'] ?? 'Login failed.');
+                      }
+                    },
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Login'),
             ),
             const SizedBox(height: 16),
             TextButton(
@@ -174,12 +197,40 @@ class _AuthPageState extends State<AuthPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                if (_regKey.currentState!.validate()) {
-                  _showMessage('Registration not yet implemented');
-                }
-              },
-              child: const Text('Sign Up'),
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (!_regKey.currentState!.validate()) return;
+                      setState(() => _isLoading = true);
+                      final result = await _authService.register(
+                        name: _regName.text.trim(),
+                        email: _regEmail.text.trim(),
+                        password: _regPassword.text,
+                      );
+                      if (!mounted) return;
+                      setState(() => _isLoading = false);
+                      if (result['success'] == true) {
+                        _showMessage(
+                          'Account created! Your UP number is ${result['upNumber']}.',
+                        );
+                        _regName.clear();
+                        _regEmail.clear();
+                        _regPassword.clear();
+                        _regConfirm.clear();
+                        setState(() => _showSignUp = false);
+                      } else {
+                        _showMessage(
+                          result['message'] ?? 'Registration failed.',
+                        );
+                      }
+                    },
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Sign Up'),
             ),
             const SizedBox(height: 16),
             TextButton(
