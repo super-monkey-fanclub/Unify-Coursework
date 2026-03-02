@@ -21,12 +21,15 @@ class _SocietiesPageState extends State<SocietiesPage> {
     'Robotics Club',
   ];
   final Map<String, String> _descriptions = const {
-    'Art Society': 'A friendly society for drawing, painting, and creative workshops.',
+    'Art Society':
+        'A friendly society for drawing, painting, and creative workshops.',
     'Anime Society': 'Weekly anime screenings and socials for all fans.',
-    'Gaming Society': 'Casual and competitive gaming events across many genres.',
+    'Gaming Society':
+        'Casual and competitive gaming events across many genres.',
     'Music Society': 'Jam sessions, open mics, and opportunities to perform.',
     'Photography Club': 'Photo walks, editing tips, and portfolio feedback.',
-    'Dance Society': 'Learn routines and perform at events throughout the year.',
+    'Dance Society':
+        'Learn routines and perform at events throughout the year.',
     'Drama Club': 'Acting workshops, productions, and backstage roles.',
     'Coding Society': 'Hack nights, project teams, and interview practice.',
     'Robotics Club': 'Build, program, and compete with robotics projects.',
@@ -34,15 +37,24 @@ class _SocietiesPageState extends State<SocietiesPage> {
 
   // Unsplash images relevant to each society
   final Map<String, String> _images = const {
-    'Art Society': 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
-    'Anime Society': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
-    'Gaming Society': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
-    'Music Society': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
-    'Photography Club': 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop',
-    'Dance Society': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop',
-    'Drama Club': 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
-    'Coding Society': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop',
-    'Robotics Club': 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
+    'Art Society':
+        'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
+    'Anime Society':
+        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
+    'Gaming Society':
+        'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
+    'Music Society':
+        'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
+    'Photography Club':
+        'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop',
+    'Dance Society':
+        'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop',
+    'Drama Club':
+        'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
+    'Coding Society':
+        'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop',
+    'Robotics Club':
+        'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
   };
 
   // Default fallback image if society not found in map
@@ -77,7 +89,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
       if (q.isEmpty) {
         _filtered = List.from(_allSocieties);
       } else {
-        _filtered = _allSocieties.where((s) => s.toLowerCase().contains(q)).toList();
+        _filtered = _allSocieties
+            .where((s) => s.toLowerCase().contains(q))
+            .toList();
       }
     });
   }
@@ -152,11 +166,13 @@ class _SocietiesPageState extends State<SocietiesPage> {
                           : ListView.separated(
                               padding: EdgeInsets.zero,
                               itemCount: _filtered.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
                               itemBuilder: (context, index) {
                                 final name = _filtered[index];
                                 // Use null-safe lookup with fallback
-                                final imageUrl = _images[name] ?? _fallbackImage;
+                                final imageUrl =
+                                    _images[name] ?? _fallbackImage;
                                 return ListTile(
                                   leading: CircleAvatar(
                                     backgroundImage: NetworkImage(imageUrl),
@@ -165,7 +181,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
                                   ),
                                   title: Text(name),
                                   subtitle: Text(
-                                    _descriptions[name] ?? 'Description coming soon.',
+                                    _descriptions[name] ??
+                                        'Description coming soon.',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -201,7 +218,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
                         MaterialPageRoute(
                           builder: (_) => SocietyDetailsPage(
                             name: name,
-                            description: _descriptions[name] ?? 'Description coming soon.',
+                            description:
+                                _descriptions[name] ??
+                                'Description coming soon.',
                             imageUrl: imageUrl,
                             icon: _icons[name] ?? Icons.groups,
                           ),
@@ -218,7 +237,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
                             imageUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withOpacity(0.15),
                               child: Icon(
                                 _icons[name] ?? Icons.groups,
                                 size: 60,
@@ -229,7 +250,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
                               if (progress == null) return child;
                               return Container(
                                 color: Colors.grey.shade200,
-                                child: const Center(child: CircularProgressIndicator()),
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               );
                             },
                           ),
@@ -239,7 +262,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
                           child: Row(
                             children: [
                               CircleAvatar(
-                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                                 child: Icon(
                                   _icons[name] ?? Icons.groups,
                                   color: Colors.white,
@@ -253,16 +278,22 @@ class _SocietiesPageState extends State<SocietiesPage> {
                                   children: [
                                     Text(
                                       name,
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      _descriptions[name] ?? 'Description coming soon.',
+                                      _descriptions[name] ??
+                                          'Description coming soon.',
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
@@ -322,8 +353,16 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   int _rating = 5;
 
   final List<SocietyReview> _reviews = [
-    const SocietyReview(author: 'Student A', rating: 5, comment: 'Great people and fun events.'),
-    const SocietyReview(author: 'Student B', rating: 4, comment: 'Really welcoming atmosphere.'),
+    const SocietyReview(
+      author: 'Student A',
+      rating: 5,
+      comment: 'Great people and fun events.',
+    ),
+    const SocietyReview(
+      author: 'Student B',
+      rating: 4,
+      comment: 'Really welcoming atmosphere.',
+    ),
   ];
 
   @override
@@ -339,13 +378,19 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_joined ? 'Joined ${widget.name} (placeholder)' : 'Left ${widget.name} (placeholder)'),
+        content: Text(
+          _joined
+              ? 'Joined ${widget.name} (placeholder)'
+              : 'Left ${widget.name} (placeholder)',
+        ),
       ),
     );
   }
 
   void _submitReview() {
-    final author = _reviewName.text.trim().isEmpty ? 'Anonymous' : _reviewName.text.trim();
+    final author = _reviewName.text.trim().isEmpty
+        ? 'Anonymous'
+        : _reviewName.text.trim();
     final comment = _reviewComment.text.trim();
 
     if (comment.isEmpty) {
@@ -393,7 +438,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                 loadingBuilder: (_, child, progress) {
                   if (progress == null) return child;
                   return Container(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.2),
                     child: const Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     ),
@@ -420,9 +467,8 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                       Expanded(
                         child: Text(
                           widget.name,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -445,21 +491,32 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text('Reviews', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'Reviews',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 8),
                   if (_reviews.isEmpty)
-                    Text('No reviews yet.', style: TextStyle(color: Colors.grey.shade600))
+                    Text(
+                      'No reviews yet.',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    )
                   else
                     ..._reviews.map(
                       (r) => Card(
                         child: ListTile(
-                          title: Text('${r.author} • ${'★' * r.rating}${'☆' * (5 - r.rating)}'),
+                          title: Text(
+                            '${r.author} • ${'★' * r.rating}${'☆' * (5 - r.rating)}',
+                          ),
                           subtitle: Text(r.comment),
                         ),
                       ),
                     ),
                   const SizedBox(height: 24),
-                  Text('Write a review', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'Write a review',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _reviewName,
@@ -476,7 +533,10 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                       border: OutlineInputBorder(),
                     ),
                     items: const [1, 2, 3, 4, 5]
-                        .map((v) => DropdownMenuItem(value: v, child: Text('$v / 5')))
+                        .map(
+                          (v) =>
+                              DropdownMenuItem(value: v, child: Text('$v / 5')),
+                        )
                         .toList(),
                     onChanged: (v) {
                       if (v == null) return;
