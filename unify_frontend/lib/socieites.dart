@@ -31,6 +31,37 @@ class _SocietiesPageState extends State<SocietiesPage> {
     'Coding Society': 'Hack nights, project teams, and interview practice.',
     'Robotics Club': 'Build, program, and compete with robotics projects.',
   };
+
+  // Unsplash images relevant to each society
+  final Map<String, String> _images = const {
+    'Art Society': 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
+    'Anime Society': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
+    'Gaming Society': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
+    'Music Society': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
+    'Photography Club': 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop',
+    'Dance Society': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop',
+    'Drama Club': 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
+    'Coding Society': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop',
+    'Robotics Club': 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
+  };
+
+  // Default fallback image if society not found in map
+  static const String _fallbackImage =
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&auto=format&fit=crop';
+
+  // Fallback icons per society
+  final Map<String, IconData> _icons = const {
+    'Art Society': Icons.palette,
+    'Anime Society': Icons.tv,
+    'Gaming Society': Icons.sports_esports,
+    'Music Society': Icons.music_note,
+    'Photography Club': Icons.camera_alt,
+    'Dance Society': Icons.music_video,
+    'Drama Club': Icons.theater_comedy,
+    'Coding Society': Icons.code,
+    'Robotics Club': Icons.precision_manufacturing,
+  };
+
   late List<String> _filtered;
 
   @override
@@ -93,8 +124,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
                     fillColor: Colors.grey.shade100,
                   ),
                 ),
-
-                // Dropdown results (suggestions) while typing
                 if (_searchController.text.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(top: 8.0),
@@ -126,8 +155,14 @@ class _SocietiesPageState extends State<SocietiesPage> {
                               separatorBuilder: (_, __) => const Divider(height: 1),
                               itemBuilder: (context, index) {
                                 final name = _filtered[index];
+                                // Use null-safe lookup with fallback
+                                final imageUrl = _images[name] ?? _fallbackImage;
                                 return ListTile(
-                                  leading: const Icon(Icons.groups),
+                                  leading: CircleAvatar(
+                                    backgroundImage: NetworkImage(imageUrl),
+                                    onBackgroundImageError: (_, __) {},
+                                    child: Icon(_icons[name] ?? Icons.groups),
+                                  ),
                                   title: Text(name),
                                   subtitle: Text(
                                     _descriptions[name] ?? 'Description coming soon.',
@@ -155,26 +190,89 @@ class _SocietiesPageState extends State<SocietiesPage> {
               itemCount: _filtered.length,
               itemBuilder: (context, index) {
                 final name = _filtered[index];
+                // Use null-safe lookup with fallback
+                final imageUrl = _images[name] ?? _fallbackImage;
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ListTile(
-                    leading: CircleAvatar(child: Text(name[0])),
-                    title: Text(name),
-                    subtitle: Text(
-                      _descriptions[name] ?? 'Description coming soon.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => SocietyDetailsPage(
                             name: name,
                             description: _descriptions[name] ?? 'Description coming soon.',
+                            imageUrl: imageUrl,
+                            icon: _icons[name] ?? Icons.groups,
                           ),
                         ),
                       );
                     },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Society banner image
+                        SizedBox(
+                          height: 140,
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                              child: Icon(
+                                _icons[name] ?? Icons.groups,
+                                size: 60,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            loadingBuilder: (_, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(child: CircularProgressIndicator()),
+                              );
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                child: Icon(
+                                  _icons[name] ?? Icons.groups,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _descriptions[name] ?? 'Description coming soon.',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -188,7 +286,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
 
 class SocietyReview {
   final String author;
-  final int rating; // 1..5
+  final int rating;
   final String comment;
 
   const SocietyReview({
@@ -201,11 +299,15 @@ class SocietyReview {
 class SocietyDetailsPage extends StatefulWidget {
   final String name;
   final String description;
+  final String imageUrl;
+  final IconData icon;
 
   const SocietyDetailsPage({
     super.key,
     required this.name,
     required this.description,
+    required this.imageUrl,
+    required this.icon,
   });
 
   @override
@@ -272,79 +374,134 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.name),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.description,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _toggleJoin,
-              child: Text(_joined ? 'Joined' : 'Join society'),
-            ),
-            const SizedBox(height: 24),
-            Text('Reviews', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            if (_reviews.isEmpty)
-              Text('No reviews yet.', style: TextStyle(color: Colors.grey.shade600))
-            else
-              ..._reviews.map(
-                (r) => Card(
-                  child: ListTile(
-                    title: Text('${r.author} • ${'★' * r.rating}${'☆' * (5 - r.rating)}'),
-                    subtitle: Text(r.comment),
-                  ),
+      body: CustomScrollView(
+        slivers: [
+          // Hero image in a collapsible app bar
+          SliverAppBar(
+            expandedHeight: 240,
+            pinned: true,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(widget.name),
+              background: Image.network(
+                widget.imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  child: Icon(widget.icon, size: 80, color: Colors.white),
                 ),
-              ),
-            const SizedBox(height: 24),
-            Text('Write a review', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _reviewName,
-              decoration: const InputDecoration(
-                labelText: 'Name (optional)',
-                border: OutlineInputBorder(),
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              value: _rating,
-              decoration: const InputDecoration(
-                labelText: 'Rating',
-                border: OutlineInputBorder(),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Society icon + name header
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: Icon(widget.icon, color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.name,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.description,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _toggleJoin,
+                    icon: Icon(_joined ? Icons.check : Icons.add),
+                    label: Text(_joined ? 'Joined' : 'Join society'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _joined
+                          ? Colors.green
+                          : Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text('Reviews', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  if (_reviews.isEmpty)
+                    Text('No reviews yet.', style: TextStyle(color: Colors.grey.shade600))
+                  else
+                    ..._reviews.map(
+                      (r) => Card(
+                        child: ListTile(
+                          title: Text('${r.author} • ${'★' * r.rating}${'☆' * (5 - r.rating)}'),
+                          subtitle: Text(r.comment),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  Text('Write a review', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _reviewName,
+                    decoration: const InputDecoration(
+                      labelText: 'Name (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: _rating,
+                    decoration: const InputDecoration(
+                      labelText: 'Rating',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [1, 2, 3, 4, 5]
+                        .map((v) => DropdownMenuItem(value: v, child: Text('$v / 5')))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() => _rating = v);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _reviewComment,
+                    decoration: const InputDecoration(
+                      labelText: 'Your review',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _submitReview,
+                    child: const Text('Submit review'),
+                  ),
+                ],
               ),
-              items: const [1, 2, 3, 4, 5]
-                  .map((v) => DropdownMenuItem(value: v, child: Text('$v / 5')))
-                  .toList(),
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() => _rating = v);
-              },
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _reviewComment,
-              decoration: const InputDecoration(
-                labelText: 'Your review',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _submitReview,
-              child: const Text('Submit review'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
