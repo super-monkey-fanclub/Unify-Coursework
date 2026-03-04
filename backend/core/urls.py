@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import register, login, me
-from djangro.urls import path
+from django.urls import path
 from .views import (
     SocietyViewSet,
     MembershipViewSet,
@@ -23,7 +23,7 @@ router.register(r'reviews', ReviewViewSet)
 router.register(r'review-responses', ReviewResponseViewSet)
 router.register(r'review-reactions', ReviewReactionViewSet)
 
-urlpatterns += [
+urlpatterns = router.urls + [
     path('register/', register),
     path('login/', login),
     path('me/', me),
