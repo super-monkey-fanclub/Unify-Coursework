@@ -1,0 +1,13 @@
+@echo off
+echo Starting Django backend...
+start "Django" python "%~dp0backend\manage.py" runserver
+
+echo Waiting for Django to start...
+timeout /t 2 /nobreak >nul
+
+echo Starting Flutter app...
+cd "%~dp0unify_frontend"
+flutter run
+
+echo Stopping Django...
+taskkill /FI "WINDOWTITLE eq Django" /F >nul 2>&1
