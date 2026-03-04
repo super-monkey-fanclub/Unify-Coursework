@@ -1,4 +1,5 @@
 -- create table for users
+-- Get-Service | Where-Object { $_.DisplayName -like "*postgres*" }
 CREATE TABLE users(
     user_id SERIAL PRIMARY KEY,
     up_number VARCHAR(20) NOT NULL UNIQUE,
