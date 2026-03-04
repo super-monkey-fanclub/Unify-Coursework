@@ -1,5 +1,9 @@
 -- create table for users
--- Get-Service | Where-Object { $_.DisplayName -like "*postgres*" }
+-- cd c:\Users\alcaj\Documents\GitHub\Unify-Coursework\backend
+-- python manage.py migrate
+
+--cd c:\Users\alcaj\Documents\GitHub\Unify-Coursework\backend
+-- python manage.py runserver
 CREATE TABLE users(
     user_id SERIAL PRIMARY KEY,
     up_number VARCHAR(20) NOT NULL UNIQUE,
