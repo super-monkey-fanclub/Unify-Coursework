@@ -1,4 +1,5 @@
 -- create table for users
+-- cd C:\Users\alcaj\Documents\GitHub\Unify-Coursework\backend ; C:/Users/alcaj/Documents/GitHub/Unify-Coursework/.venv/Scripts/python.exe manage.py runserver
 CREATE TABLE users(
     user_id SERIAL PRIMARY KEY,
     up_number VARCHAR(20) NOT NULL UNIQUE,
