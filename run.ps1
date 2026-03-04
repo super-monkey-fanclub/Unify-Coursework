@@ -7,8 +7,8 @@ function Get-PostgresToolPath {
 
     $candidates = @(
         Get-ChildItem -Path 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue |
-            Sort-Object Name -Descending |
-            ForEach-Object { Join-Path $_.FullName "bin\$Tool.exe" }
+        Sort-Object Name -Descending |
+        ForEach-Object { Join-Path $_.FullName "bin\$Tool.exe" }
     )
 
     foreach ($path in $candidates) {
@@ -48,7 +48,8 @@ Write-Host "Ensuring PostgreSQL database '$dbName' exists..." -ForegroundColor C
 $env:PGPASSWORD = $dbPassword
 try {
     & $createdb -U $dbUser $dbName 2>$null
-} catch {
+}
+catch {
     # createdb returns non-zero if DB exists; ignore that case
 }
 
@@ -56,7 +57,8 @@ Write-Host "Running Django migrations..." -ForegroundColor Cyan
 Push-Location $backendDir
 try {
     python manage.py migrate
-} finally {
+}
+finally {
     Pop-Location
 }
 
@@ -79,8 +81,9 @@ try {
     # Run Flutter app
     Write-Host "Starting Flutter app..." -ForegroundColor Cyan
     Set-Location $frontendDir
-        flutter run -d $flutterDevice --debug
-} finally {
+    flutter run -d $flutterDevice --debug
+}
+finally {
     # When Flutter exits, stop Django
     Write-Host "Stopping Django..." -ForegroundColor Yellow
     if ($null -ne $django -and -not $django.HasExited) {
