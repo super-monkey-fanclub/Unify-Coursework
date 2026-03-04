@@ -89,9 +89,9 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Account',
             onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const AuthPage(),
-              ));
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const AuthPage()));
             },
             icon: const Icon(Icons.person, color: Colors.white),
           ),
@@ -109,17 +109,22 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 12.0,
+            ),
             child: TextField(
               controller: _searchController,
               textInputAction: TextInputAction.search,
               onSubmitted: (value) {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => SearchResultsPage(
-                    query: value,
-                    items: _placeholderItems,
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SearchResultsPage(
+                      query: value,
+                      items: _placeholderItems,
+                    ),
                   ),
-                ));
+                );
               },
               decoration: InputDecoration(
                 hintText: 'Search societies, e.g. "Art", "Gaming"',
@@ -127,12 +132,14 @@ class _HomePageState extends State<HomePage> {
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.arrow_forward),
                   onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => SearchResultsPage(
-                        query: _searchController.text,
-                        items: _placeholderItems,
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SearchResultsPage(
+                          query: _searchController.text,
+                          items: _placeholderItems,
+                        ),
                       ),
-                    ));
+                    );
                   },
                 ),
                 border: OutlineInputBorder(
@@ -150,9 +157,9 @@ class _HomePageState extends State<HomePage> {
               children: [
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const SocietiesPage(),
-                    ));
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SocietiesPage()),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
@@ -171,9 +178,9 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const AuthPage(),
-                    ));
+                    Navigator.of(
+                      context,
+                    ).push(MaterialPageRoute(builder: (_) => const AuthPage()));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -405,7 +412,11 @@ class SearchResultsPage extends StatefulWidget {
   final String query;
   final List<String> items;
 
-  const SearchResultsPage({super.key, required this.query, required this.items});
+  const SearchResultsPage({
+    super.key,
+    required this.query,
+    required this.items,
+  });
 
   @override
   State<SearchResultsPage> createState() => _SearchResultsPageState();
@@ -421,7 +432,9 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     if (q.isEmpty) {
       _results = List.from(widget.items);
     } else {
-      _results = widget.items.where((i) => i.toLowerCase().contains(q)).toList();
+      _results = widget.items
+          .where((i) => i.toLowerCase().contains(q))
+          .toList();
     }
   }
 
