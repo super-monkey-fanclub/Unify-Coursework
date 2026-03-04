@@ -18,3 +18,5 @@ flutter run
 # When Flutter exits, stop Django
 Write-Host "Stopping Django..." -ForegroundColor Yellow
 Stop-Process -Id $django.Id -ErrorAction SilentlyContinue
+
+#& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE DATABASE unify;"                                        
