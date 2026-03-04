@@ -1,4 +1,10 @@
 from rest_framework import viewsets
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import RegisterSerializer
 from .models import (
     Society,
     Membership,
@@ -60,3 +66,53 @@ class ReviewResponseViewSet(viewsets.ModelViewSet):
 class ReviewReactionViewSet(viewsets.ModelViewSet):
     queryset = ReviewReaction.objects.all()
     serializer_class = ReviewReactionSerializer
+
+@api_view(['POST'])
+def register(request):
+
+    serializer = RegisterSerializer(data=request.data)
+
+    if serializer.is_valid():
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "user": serializer.data,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        })
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def login(request):
+
+    username = request.data.get("username")
+    password = request.data.get("password")
+
+    user = authenticate(username=username, password=password)
+
+    if user is None:
+        return Response({"error": "Invalid credentials"}, status=401)
+
+    refresh = RefreshToken.for_user(user)
+
+    return Response({
+        "access": str(refresh.access_token),
+        "refresh": str(refresh)
+    })
+
+
+@api_view(['GET'])
+def me(request):
+
+    if request.user.is_authenticated:
+        return Response({
+            "id": request.user.id,
+            "username": request.user.username,
+            "email": request.user.email
+        })
+
+    return Response({"error": "Not authenticated"}, status=401)
