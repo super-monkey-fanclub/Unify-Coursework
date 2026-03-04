@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import Membership
 from .models import (
     User,
     Society,
@@ -52,6 +53,13 @@ class PollVoteSerializer(serializers.ModelSerializer):
         user = data["user"]
         poll = data["poll"]
 
+        #check if user is a member of the society
+        if not Membership.objects.filter(user=user, society=poll.society).exists():
+            raise serializers.ValidationError(
+                "Only members of this society can vote in its polls."
+            )
+
+        #prevent double voting
         if PollVote.objects.filter(user=user, poll=poll).exists():
             raise serializers.ValidationError(
                 "You have already voted in this poll."
