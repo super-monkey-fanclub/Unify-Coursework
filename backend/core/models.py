@@ -46,6 +46,9 @@ class PollVote(models.Model):
     option = models.ForeignKey(PollOption, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ('user', 'poll')
+
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     society = models.ForeignKey(Society, on_delete=models.CASCADE)

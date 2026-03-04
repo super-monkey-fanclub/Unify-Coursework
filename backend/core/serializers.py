@@ -43,9 +43,21 @@ class PollOptionSerializer(serializers.ModelSerializer):
 
 
 class PollVoteSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = PollVote
         fields = "__all__"
+
+    def validate(self, data):
+        user = data["user"]
+        poll = data["poll"]
+
+        if PollVote.objects.filter(user=user, poll=poll).exists():
+            raise serializers.ValidationError(
+                "You have already voted in this poll."
+            )
+
+        return data
 
 
 class ReviewSerializer(serializers.ModelSerializer):
