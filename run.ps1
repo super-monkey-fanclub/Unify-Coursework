@@ -58,17 +58,21 @@ if (-not (Test-Path $schemaFile)) {
 Write-Host "Ensuring PostgreSQL database '$dbName' exists..." -ForegroundColor Cyan
 $env:PGPASSWORD = $dbPassword
 
-Write-Host "Checking PostgreSQL connection on $dbHost:$dbPort..." -ForegroundColor Cyan
+Write-Host "Checking PostgreSQL connection on ${dbHost}:$dbPort..." -ForegroundColor Cyan
 & $psql -h $dbHost -p $dbPort -U $dbUser -d postgres -c "SELECT 1;" -t -A 1>$null
 if ($LASTEXITCODE -ne 0) {
-    throw "Could not connect to PostgreSQL at $dbHost:$dbPort as user '$dbUser'. Ensure the PostgreSQL service is running and DB_HOST/DB_PORT/DB_USER/DB_PASSWORD are correct."
+    throw "Could not connect to PostgreSQL at ${dbHost}:$dbPort as user '$dbUser'. Ensure the PostgreSQL service is running and DB_HOST/DB_PORT/DB_USER/DB_PASSWORD are correct."
 }
 
 try {
-    & $createdb -h $dbHost -p $dbPort -U $dbUser $dbName 2>$null
+    $dbExists = & $psql -h $dbHost -p $dbPort -U $dbUser -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname = '$dbName';"
     if ($LASTEXITCODE -ne 0) {
-        $dbExists = & $psql -h $dbHost -p $dbPort -U $dbUser -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname = '$dbName';"
-        if ($LASTEXITCODE -ne 0 -or "$dbExists".Trim() -ne '1') {
+        throw "Failed to check whether database '$dbName' exists."
+    }
+
+    if ("$dbExists".Trim() -ne '1') {
+        & $createdb -h $dbHost -p $dbPort -U $dbUser $dbName
+        if ($LASTEXITCODE -ne 0) {
             throw "Failed to create database '$dbName'. Check PostgreSQL permissions for user '$dbUser'."
         }
     }
