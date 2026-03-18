@@ -20,27 +20,57 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class SocietySerializer(serializers.ModelSerializer):
+    member_count = serializers.SerializerMethodField()
+    is_member = serializers.SerializerMethodField()
+    
     class Meta:
         model = Society
-        fields = "__all__"
+        fields = ["id", "name", "description", "category", "created_at", "member_count", "is_member"]
+    
+    def get_member_count(self, obj):
+        return Membership.objects.filter(society=obj).count()
+    
+    def get_is_member(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Membership.objects.filter(society=obj, user=request.user).exists()
+        return False
 
 
 class MembershipSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    society_name = serializers.CharField(source='society.name', read_only=True)
+    
     class Meta:
         model = Membership
-        fields = "__all__"
+        fields = ["id", "user", "user_username", "society", "society_name", "role", "created_at"]
 
 
 class PollSerializer(serializers.ModelSerializer):
+    options = serializers.SerializerMethodField()
+    total_votes = serializers.SerializerMethodField()
+    
     class Meta:
         model = Poll
-        fields = "__all__"
+        fields = ["id", "society", "title", "description", "opens_at", "closes_at", "created_at", "options", "total_votes"]
+    
+    def get_total_votes(self, obj):
+        return PollVote.objects.filter(poll=obj).count()
+
+    def get_options(self, obj):
+        options = PollOption.objects.filter(poll=obj)
+        return PollOptionSerializer(options, many=True).data
 
 
 class PollOptionSerializer(serializers.ModelSerializer):
+    vote_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = PollOption
-        fields = "__all__"
+        fields = ["id", "poll", "option_text", "vote_count"]
+    
+    def get_vote_count(self, obj):
+        return PollVote.objects.filter(option=obj).count()
 
 
 class PollVoteSerializer(serializers.ModelSerializer):
@@ -69,9 +99,19 @@ class PollVoteSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    response_count = serializers.SerializerMethodField()
+    reaction_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = Review
-        fields = "__all__"
+        fields = ["id", "user", "user_username", "society", "rating", "comment", "created_at", "response_count", "reaction_count"]
+    
+    def get_response_count(self, obj):
+        return ReviewResponse.objects.filter(review=obj).count()
+    
+    def get_reaction_count(self, obj):
+        return ReviewReaction.objects.filter(review=obj).count()
 
 
 class ReviewResponseSerializer(serializers.ModelSerializer):
