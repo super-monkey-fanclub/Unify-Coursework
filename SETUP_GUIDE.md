@@ -2,13 +2,15 @@
 
 ## Overview
 
-This project now uses **Docker Compose** to manage PostgreSQL database across all developer machines, eliminating configuration inconsistencies. The admin panel is accessible without authentication for development purposes.
+This project prefers **Docker Compose** to manage PostgreSQL across all developer machines, and can also fall back to a local PostgreSQL service if Docker is not installed. The admin panel is accessible without authentication for development purposes.
 
 ## Prerequisites
 
-1. **Docker Desktop** - [Download here](https://www.docker.com/products/docker-desktop)
-   - Includes Docker Engine and Docker Compose
-   - Required for running the PostgreSQL database in containers
+1. **PostgreSQL runtime (choose one)**
+   - **Recommended**: Docker Desktop - [Download here](https://www.docker.com/products/docker-desktop)
+     - Includes Docker Engine and Docker Compose
+     - Provides consistent database setup for the whole team
+   - **Alternative**: Local PostgreSQL service running on your machine
    
 2. **Python 3.9+** - For running Django backend
 
@@ -46,12 +48,12 @@ Default values work for most use cases:
 ```
 
 This script will:
-- ✅ Start PostgreSQL in Docker
+- ✅ Start PostgreSQL in Docker (if available), otherwise use/start local PostgreSQL
 - ✅ Wait for the database to be ready
 - ✅ Run Django migrations
 - ✅ Start Django development server (http://127.0.0.1:8000)
 - ✅ Launch Flutter app
-- ✅ Clean up when you exit (stops database & backend)
+- ✅ Clean up when you exit (always stops backend; stops DB only if started via Docker)
 
 ## Accessing Admin Panel
 
@@ -113,9 +115,16 @@ Or add them to your `.env` file.
 
 ### Docker not found
 
-**Error**: "Docker is not installed or not in PATH"
+If Docker is not installed, `run.ps1` automatically falls back to local PostgreSQL.
 
-**Solution**: [Install Docker Desktop](https://www.docker.com/products/docker-desktop) and restart your terminal.
+If startup still fails, ensure local PostgreSQL is running and your `.env` values are correct:
+
+```powershell
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+You can still install Docker later for a more consistent team setup: [Install Docker Desktop](https://www.docker.com/products/docker-desktop)
 
 ### Port already in use
 
