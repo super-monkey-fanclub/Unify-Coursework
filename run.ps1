@@ -5,6 +5,11 @@ function Get-PostgresToolPath {
         [Parameter(Mandatory = $true)][ValidateSet('psql', 'createdb')][string]$Tool
     )
 
+    $fromPath = (Get-Command $Tool -ErrorAction SilentlyContinue).Source
+    if (-not [string]::IsNullOrWhiteSpace($fromPath)) {
+        return $fromPath
+    }
+
     $candidates = @(
         Get-ChildItem -Path 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue |
         Sort-Object Name -Descending |
@@ -33,6 +38,12 @@ if ([string]::IsNullOrWhiteSpace($dbUser)) { $dbUser = 'postgres' }
 $dbPassword = $env:DB_PASSWORD
 if ([string]::IsNullOrWhiteSpace($dbPassword)) { $dbPassword = 'postgres' }
 
+$dbHost = $env:DB_HOST
+if ([string]::IsNullOrWhiteSpace($dbHost)) { $dbHost = 'localhost' }
+
+$dbPort = $env:DB_PORT
+if ([string]::IsNullOrWhiteSpace($dbPort)) { $dbPort = '5432' }
+
 $psql = Get-PostgresToolPath -Tool 'psql'
 $createdb = Get-PostgresToolPath -Tool 'createdb'
 
@@ -46,11 +57,24 @@ if (-not (Test-Path $schemaFile)) {
 
 Write-Host "Ensuring PostgreSQL database '$dbName' exists..." -ForegroundColor Cyan
 $env:PGPASSWORD = $dbPassword
+
+Write-Host "Checking PostgreSQL connection on $dbHost:$dbPort..." -ForegroundColor Cyan
+& $psql -h $dbHost -p $dbPort -U $dbUser -d postgres -c "SELECT 1;" -t -A 1>$null
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not connect to PostgreSQL at $dbHost:$dbPort as user '$dbUser'. Ensure the PostgreSQL service is running and DB_HOST/DB_PORT/DB_USER/DB_PASSWORD are correct."
+}
+
 try {
-    & $createdb -U $dbUser $dbName 2>$null
+    & $createdb -h $dbHost -p $dbPort -U $dbUser $dbName 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $dbExists = & $psql -h $dbHost -p $dbPort -U $dbUser -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname = '$dbName';"
+        if ($LASTEXITCODE -ne 0 -or "$dbExists".Trim() -ne '1') {
+            throw "Failed to create database '$dbName'. Check PostgreSQL permissions for user '$dbUser'."
+        }
+    }
 }
 catch {
-    # createdb returns non-zero if DB exists; ignore that case
+    throw
 }
 
 Write-Host "Running Django migrations..." -ForegroundColor Cyan
@@ -63,7 +87,7 @@ finally {
 }
 
 Write-Host "Loading schema into '$dbName' from unify.sql..." -ForegroundColor Cyan
-& $psql -U $dbUser -d $dbName -f $schemaFile
+& $psql -h $dbHost -p $dbPort -U $dbUser -d $dbName -f $schemaFile
 
 # Start Django backend in the background
 Write-Host "Starting Django backend..." -ForegroundColor Cyan
