@@ -1,5 +1,7 @@
 from django.db import models
+from django.db.models import F, Q
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
     up_number = models.CharField(max_length=20, unique=True)
@@ -36,6 +38,14 @@ class Poll(models.Model):
     closes_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(closes_at__gt=F('opens_at')),
+                name='poll_closes_after_opens',
+            )
+        ]
+
 class PollOption(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     option_text = models.CharField(max_length=255)
@@ -52,7 +62,7 @@ class PollVote(models.Model):
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     society = models.ForeignKey(Society, on_delete=models.CASCADE)
-    rating = models.IntegerField()
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -70,3 +80,6 @@ class ReviewReaction(models.Model):
     review = models.ForeignKey(Review, on_delete=models.CASCADE)
     reaction_type = models.CharField(max_length=20, choices=[('like', 'Like'), ('dislike', 'Dislike')])
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'review')

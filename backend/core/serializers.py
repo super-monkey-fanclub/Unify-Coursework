@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Membership
 from .models import (
     User,
     Society,
@@ -44,6 +43,7 @@ class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
         fields = ["id", "user", "user_username", "society", "society_name", "role", "created_at"]
+        read_only_fields = ["user", "role", "created_at"]
 
 
 class PollSerializer(serializers.ModelSerializer):
@@ -53,6 +53,16 @@ class PollSerializer(serializers.ModelSerializer):
     class Meta:
         model = Poll
         fields = ["id", "society", "title", "description", "opens_at", "closes_at", "created_at", "options", "total_votes"]
+        read_only_fields = ["created_at", "options", "total_votes"]
+
+    def validate(self, data):
+        opens_at = data.get("opens_at")
+        closes_at = data.get("closes_at")
+
+        if opens_at and closes_at and opens_at >= closes_at:
+            raise serializers.ValidationError("opens_at must be earlier than closes_at.")
+
+        return data
     
     def get_total_votes(self, obj):
         return PollVote.objects.filter(poll=obj).count()
@@ -77,11 +87,23 @@ class PollVoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollVote
-        fields = "__all__"
+        fields = ["id", "user", "poll", "option", "created_at"]
+        read_only_fields = ["user", "created_at"]
 
     def validate(self, data):
-        user = data["user"]
-        poll = data["poll"]
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else data.get("user")
+        poll = data.get("poll")
+        option = data.get("option")
+
+        if user is None:
+            raise serializers.ValidationError("Authentication is required to vote.")
+
+        if poll is None or option is None:
+            raise serializers.ValidationError("Both poll and option are required.")
+
+        if option.poll_id != poll.id:
+            raise serializers.ValidationError("Selected option does not belong to this poll.")
 
         #check if user is a member of the society
         if not Membership.objects.filter(user=user, society=poll.society).exists():
@@ -106,6 +128,12 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ["id", "user", "user_username", "society", "rating", "comment", "created_at", "response_count", "reaction_count"]
+        read_only_fields = ["user", "created_at", "response_count", "reaction_count"]
+
+    def validate_rating(self, value):
+        if value < 1 or value > 5:
+            raise serializers.ValidationError("Rating must be between 1 and 5.")
+        return value
     
     def get_response_count(self, obj):
         return ReviewResponse.objects.filter(review=obj).count()
@@ -117,13 +145,31 @@ class ReviewSerializer(serializers.ModelSerializer):
 class ReviewResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReviewResponse
-        fields = "__all__"
+        fields = ["id", "review", "admin", "response_text", "created_at"]
+        read_only_fields = ["admin", "created_at"]
 
 
 class ReviewReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReviewReaction
-        fields = "__all__"
+        fields = ["id", "user", "review", "reaction_type", "created_at"]
+        read_only_fields = ["user", "created_at"]
+
+    def validate(self, data):
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else data.get("user")
+        review = data.get("review")
+
+        if user is None:
+            raise serializers.ValidationError("Authentication is required to react.")
+
+        if review is None:
+            raise serializers.ValidationError("Review is required.")
+
+        if ReviewReaction.objects.filter(user=user, review=review).exists():
+            raise serializers.ValidationError("You have already reacted to this review.")
+
+        return data
 
 User = get_user_model()
 
