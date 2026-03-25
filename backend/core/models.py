@@ -44,6 +44,9 @@ class Membership(models.Model):
     class Meta:
         unique_together = ('user', 'society')
 
+    def __str__(self):
+        return f"({self.user.username}, {self.society.name}, {self.role})"
+
 class Poll(models.Model):
     society = models.ForeignKey(Society, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
