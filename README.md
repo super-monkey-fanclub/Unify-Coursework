@@ -15,3 +15,5 @@ python manage.py runserver 0.0.0.0:8000
 **Flutter Startup**
 cd "unify_frontend"
 flutter run -d chrome
+
+maria - use ..\.venv\Scripts\activate.ps1
