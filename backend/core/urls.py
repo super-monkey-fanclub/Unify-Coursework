@@ -9,7 +9,10 @@ from .views import (
     PollVoteViewSet,
     ReviewViewSet,
     ReviewResponseViewSet,
-    ReviewReactionViewSet
+    ReviewReactionViewSet,
+    NotificationViewSet,
+    EventViewSet,
+    EventRSVPViewSet,
 )
 
 router = DefaultRouter()
@@ -22,6 +25,9 @@ router.register(r'poll-votes', PollVoteViewSet)
 router.register(r'reviews', ReviewViewSet)
 router.register(r'review-responses', ReviewResponseViewSet)
 router.register(r'review-reactions', ReviewReactionViewSet)
+router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'events', EventViewSet)
+router.register(r'event-rsvps', EventRSVPViewSet)
 
 urlpatterns = [
     path('', api_root, name='api-root'),

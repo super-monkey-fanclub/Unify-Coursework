@@ -9,7 +9,10 @@ from .models import (
     PollVote,
     Review,
     ReviewResponse,
-    ReviewReaction
+    ReviewReaction,
+    Notification,
+    Event,
+    EventRSVP,
 )
 
 class UserSerializer(serializers.ModelSerializer):
@@ -168,6 +171,86 @@ class ReviewReactionSerializer(serializers.ModelSerializer):
 
         if ReviewReaction.objects.filter(user=user, review=review).exists():
             raise serializers.ValidationError("You have already reacted to this review.")
+
+        return data
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "title", "message", "is_read", "created_at"]
+        read_only_fields = ["id", "title", "message", "created_at"]
+
+
+class EventSerializer(serializers.ModelSerializer):
+    attendee_count = serializers.SerializerMethodField()
+    is_attending = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Event
+        fields = [
+            "id",
+            "society",
+            "title",
+            "description",
+            "location",
+            "starts_at",
+            "ends_at",
+            "capacity",
+            "created_by",
+            "created_at",
+            "attendee_count",
+            "is_attending",
+        ]
+        read_only_fields = ["created_by", "created_at", "attendee_count", "is_attending"]
+
+    def validate(self, data):
+        starts_at = data.get("starts_at")
+        ends_at = data.get("ends_at")
+
+        if starts_at and ends_at and starts_at >= ends_at:
+            raise serializers.ValidationError("starts_at must be earlier than ends_at.")
+
+        return data
+
+    def get_attendee_count(self, obj):
+        return obj.rsvps.filter(status="going").count()
+
+    def get_is_attending(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.rsvps.filter(user=request.user, status="going").exists()
+
+
+class EventRSVPSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventRSVP
+        fields = ["id", "event", "user", "status", "created_at", "updated_at"]
+        read_only_fields = ["user", "created_at", "updated_at"]
+
+    def validate(self, data):
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else data.get("user")
+        event = data.get("event")
+        status_value = data.get("status", "going")
+
+        if not user:
+            raise serializers.ValidationError("Authentication is required to RSVP.")
+
+        if not event:
+            raise serializers.ValidationError("Event is required.")
+
+        if not Membership.objects.filter(user=user, society=event.society).exists():
+            raise serializers.ValidationError("Only society members can RSVP to this event.")
+
+        if status_value == "going" and event.capacity is not None:
+            current_attendees = EventRSVP.objects.filter(event=event, status="going").count()
+            existing_rsvp = EventRSVP.objects.filter(event=event, user=user).first()
+            if existing_rsvp and existing_rsvp.status == "going":
+                return data
+            if current_attendees >= event.capacity:
+                raise serializers.ValidationError("This event is at full capacity.")
 
         return data
 

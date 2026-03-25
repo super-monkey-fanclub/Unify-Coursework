@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, action
+from rest_framework.decorators import api_view, action, throttle_classes
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -10,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Count, Avg
 from .serializers import RegisterSerializer
 from .permissions import IsOwnerOrReadOnly, IsSocietyAdminForObject
+from .throttles import RegisterRateThrottle, LoginRateThrottle, WriteActionRateThrottle
 from .models import (
     Society,
     Membership,
@@ -18,7 +19,10 @@ from .models import (
     PollVote,
     Review,
     ReviewResponse,
-    ReviewReaction
+    ReviewReaction,
+    Notification,
+    Event,
+    EventRSVP,
 )
 
 from .serializers import (
@@ -29,7 +33,10 @@ from .serializers import (
     PollVoteSerializer,
     ReviewSerializer,
     ReviewResponseSerializer,
-    ReviewReactionSerializer
+    ReviewReactionSerializer,
+    NotificationSerializer,
+    EventSerializer,
+    EventRSVPSerializer,
 )
 
 
@@ -85,6 +92,18 @@ class SocietyViewSet(viewsets.ModelViewSet):
             society=society,
             role='member'
         )
+
+        admins = Membership.objects.filter(society=society, role='admin').select_related('user')
+        Notification.objects.bulk_create([
+            Notification(
+                user=admin.user,
+                title="New member joined",
+                message=f"{user.username} joined {society.name}.",
+            )
+            for admin in admins
+            if admin.user_id != user.id
+        ])
+
         return Response(
             {"detail": "Successfully joined society", "membership_id": membership.id},
             status=status.HTTP_201_CREATED
@@ -177,7 +196,17 @@ class PollViewSet(viewsets.ModelViewSet):
         if not is_admin:
             raise PermissionDenied("You must be a society admin to create polls.")
 
-        serializer.save()
+        poll = serializer.save()
+        members = Membership.objects.filter(society=society).select_related("user")
+        Notification.objects.bulk_create([
+            Notification(
+                user=member.user,
+                title="New poll created",
+                message=f"{poll.title} was posted in {society.name}.",
+            )
+            for member in members
+            if member.user_id != self.request.user.id
+        ])
 
     @action(detail=True, methods=['get'])
     def results(self, request, pk=None):
@@ -250,6 +279,7 @@ class PollVoteViewSet(viewsets.ModelViewSet):
     queryset = PollVote.objects.all()
     serializer_class = PollVoteSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [WriteActionRateThrottle]
 
     def perform_create(self, serializer):
         """Automatically set the user when creating a vote"""
@@ -322,13 +352,20 @@ class ReviewResponseViewSet(viewsets.ModelViewSet):
         if not is_admin:
             raise PermissionDenied("Only society admins can respond to reviews.")
 
-        serializer.save(admin=self.request.user)
+        response = serializer.save(admin=self.request.user)
+        Notification.objects.create(
+            user=review.user,
+            title="Review response",
+            message=f"An admin responded to your review in {review.society.name}.",
+        )
+        return response
 
 
 class ReviewReactionViewSet(viewsets.ModelViewSet):
     queryset = ReviewReaction.objects.all()
     serializer_class = ReviewReactionSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [WriteActionRateThrottle]
 
     def get_queryset(self):
         if self.request.user.is_staff:
@@ -339,7 +376,86 @@ class ReviewReactionViewSet(viewsets.ModelViewSet):
         """Automatically set the user when creating a reaction"""
         serializer.save(user=self.request.user)
 
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+        return Response({"detail": "Notification marked as read."})
+
+    @action(detail=False, methods=["post"])
+    def mark_all_read(self, request):
+        updated = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({"detail": f"Marked {updated} notifications as read."})
+
+
+class EventViewSet(viewsets.ModelViewSet):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["title", "description", "location", "society__name"]
+    ordering_fields = ["starts_at", "created_at"]
+    ordering = ["starts_at"]
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        if self.action in ["update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsSocietyAdminForObject()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        society = serializer.validated_data["society"]
+        is_admin = Membership.objects.filter(
+            user=self.request.user,
+            society=society,
+            role="admin",
+        ).exists()
+
+        if not is_admin:
+            raise PermissionDenied("You must be a society admin to create events.")
+
+        event = serializer.save(created_by=self.request.user)
+        members = Membership.objects.filter(society=society).select_related("user")
+        Notification.objects.bulk_create([
+            Notification(
+                user=member.user,
+                title="New event added",
+                message=f"{event.title} is scheduled for {society.name}.",
+            )
+            for member in members
+            if member.user_id != self.request.user.id
+        ])
+
+
+class EventRSVPViewSet(viewsets.ModelViewSet):
+    queryset = EventRSVP.objects.all()
+    serializer_class = EventRSVPSerializer
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [WriteActionRateThrottle]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return EventRSVP.objects.all()
+        return EventRSVP.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
 @api_view(['POST'])
+@throttle_classes([RegisterRateThrottle])
 def register(request):
 
     serializer = RegisterSerializer(data=request.data)
@@ -359,6 +475,7 @@ def register(request):
 
 
 @api_view(['POST'])
+@throttle_classes([LoginRateThrottle])
 def login(request):
 
     username = request.data.get("username")
@@ -420,6 +537,9 @@ def api_root(request):
         'reviews': reverse('review-list', request=request),
         'review_responses': reverse('reviewresponse-list', request=request),
         'review_reactions': reverse('reviewreaction-list', request=request),
+        'notifications': reverse('notification-list', request=request),
+        'events': reverse('event-list', request=request),
+        'event_rsvps': reverse('eventrsvp-list', request=request),
         'register': reverse('register', request=request),
         'login': reverse('login', request=request),
         'me': reverse('me', request=request),
