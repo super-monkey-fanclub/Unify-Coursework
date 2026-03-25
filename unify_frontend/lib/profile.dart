@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'services/auth_service.dart';
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  final Map<String, dynamic>? currentUser;
+
+  const AuthPage({super.key, this.currentUser});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -47,6 +49,45 @@ class _AuthPageState extends State<AuthPage> {
 
   bool _isValidEmail(String email) {
     return email.contains('@') && email.contains('.');
+  }
+
+  // ── Logged-in view ─────────────────────────────────────────────────────────
+  Widget _buildLoggedInView() {
+    final email = widget.currentUser?['email'] as String? ?? '';
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.person, size: 64),
+            const SizedBox(height: 16),
+            const Text(
+              'You are currently signed in as',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              email,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Pop back to the caller indicating sign-out.
+                Navigator.of(context).pop(null);
+              },
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Login page ─────────────────────────────────────────────────────────────
@@ -232,12 +273,18 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLoggedIn = widget.currentUser != null;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
-        title: Text(_showSignUp ? 'Sign Up' : 'Login'),
+        title: Text(
+          isLoggedIn
+              ? 'Account'
+              : (_showSignUp ? 'Sign Up' : 'Login'),
+        ),
       ),
-      body: _showSignUp ? _buildSignUpPage() : _buildLoginPage(),
+      body:
+          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }

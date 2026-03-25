@@ -92,15 +92,19 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Account',
             onPressed: () {
-        Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const AuthPage()))
-          .then((value) {
-          if (value != null && mounted) {
-            setState(() {
-              _currentUser = value as Map<String, dynamic>;
-            });
-          }
-          });
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) => AuthPage(currentUser: _currentUser),
+                    ),
+                  )
+                  .then((value) {
+                // value is a user map on login, or null on sign-out.
+                if (!mounted) return;
+                setState(() {
+                  _currentUser = value as Map<String, dynamic>?;
+                });
+              });
             },
             icon: const Icon(Icons.person, color: Colors.white),
           ),
@@ -187,14 +191,17 @@ class _HomePageState extends State<HomePage> {
                 ElevatedButton(
                   onPressed: () {
           Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const AuthPage()))
-            .then((value) {
-            if (value != null && mounted) {
-              setState(() {
-                _currentUser = value as Map<String, dynamic>;
-              });
-            }
-            });
+                      .push(
+                        MaterialPageRoute(
+                          builder: (_) => AuthPage(currentUser: _currentUser),
+                        ),
+                      )
+                      .then((value) {
+                    if (!mounted) return;
+                    setState(() {
+                      _currentUser = value as Map<String, dynamic>?;
+                    });
+                  });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.secondary,

@@ -7,7 +7,7 @@ Maya - up2266552  198966765
 Michael - up2273239 183396154
 
 
-**Server Startup**
+**Server Startup***
 cd backend
 ..\.venv\Scripts\activate
 python manage.py runserver 0.0.0.0:8000
