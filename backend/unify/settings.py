@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-42gjke$ehe%1a@i&^$bxskjy377gm^3mws&as#11h4q(rdzpvq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -38,11 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'core',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -69,6 +71,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'unify.wsgi.application'
+
+# CORS: allow the Flutter web app (different port) to call this API during development
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Database
