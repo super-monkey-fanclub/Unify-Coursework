@@ -6,5 +6,12 @@ Beau - up2281726 237248106
 Maya - up2266552  198966765
 Michael - up2273239 183396154
 
-#cd backend
-#python manage.py runserver 127.0.0.1:8000
+
+**Server Startup**
+cd backend
+..\.venv\Scripts\activate
+python manage.py runserver 0.0.0.0:8000
+
+**Flutter Startup**
+cd "unify_frontend"
+flutter run -d chrome
