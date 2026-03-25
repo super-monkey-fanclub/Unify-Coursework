@@ -2,13 +2,14 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
-from django.db.models import Count, Q
+from django.db.models import Count, Avg
 from .serializers import RegisterSerializer
+from .permissions import IsOwnerOrReadOnly, IsSocietyAdminForObject
 from .models import (
     Society,
     Membership,
@@ -35,7 +36,32 @@ from .serializers import (
 class SocietyViewSet(viewsets.ModelViewSet):
     queryset = Society.objects.all()
     serializer_class = SocietySerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name", "category", "description"]
+    ordering_fields = ["created_at", "name"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        queryset = Society.objects.all().annotate(avg_rating=Avg("review__rating"))
+
+        category = self.request.query_params.get("category")
+        min_rating = self.request.query_params.get("min_rating")
+        joined_only = self.request.query_params.get("joined")
+
+        if category:
+            queryset = queryset.filter(category__iexact=category)
+
+        if min_rating:
+            try:
+                queryset = queryset.filter(avg_rating__gte=float(min_rating))
+            except ValueError:
+                pass
+
+        if joined_only == "true" and self.request.user.is_authenticated:
+            queryset = queryset.filter(membership__user=self.request.user)
+
+        return queryset
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -110,11 +136,48 @@ class MembershipViewSet(viewsets.ModelViewSet):
     serializer_class = MembershipSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Membership.objects.all()
+        return Membership.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        society = serializer.validated_data["society"]
+
+        if Membership.objects.filter(user=self.request.user, society=society).exists():
+            raise PermissionDenied("You are already a member of this society.")
+
+        serializer.save(user=self.request.user, role="member")
+
 
 class PollViewSet(viewsets.ModelViewSet):
     queryset = Poll.objects.all()
     serializer_class = PollSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["title", "description"]
+    ordering_fields = ["created_at", "opens_at", "closes_at"]
+    ordering = ["-created_at"]
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        if self.action in ["update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsSocietyAdminForObject()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        society = serializer.validated_data["society"]
+        is_admin = Membership.objects.filter(
+            user=self.request.user,
+            society=society,
+            role="admin",
+        ).exists()
+
+        if not is_admin:
+            raise PermissionDenied("You must be a society admin to create polls.")
+
+        serializer.save()
 
     @action(detail=True, methods=['get'])
     def results(self, request, pk=None):
@@ -160,7 +223,27 @@ class PollViewSet(viewsets.ModelViewSet):
 class PollOptionViewSet(viewsets.ModelViewSet):
     queryset = PollOption.objects.all()
     serializer_class = PollOptionSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        if self.action in ["update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsSocietyAdminForObject()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        poll = serializer.validated_data["poll"]
+        is_admin = Membership.objects.filter(
+            user=self.request.user,
+            society=poll.society,
+            role="admin",
+        ).exists()
+
+        if not is_admin:
+            raise PermissionDenied("You must be a society admin to add poll options.")
+
+        serializer.save()
 
 
 class PollVoteViewSet(viewsets.ModelViewSet):
@@ -176,7 +259,36 @@ class PollVoteViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["comment", "society__name", "user__username"]
+    ordering_fields = ["created_at", "rating"]
+    ordering = ["-created_at"]
+
+    def get_permissions(self):
+        if self.action in ["update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsOwnerOrReadOnly()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        queryset = Review.objects.all()
+
+        society_id = self.request.query_params.get("society")
+        rating = self.request.query_params.get("rating")
+
+        if society_id:
+            queryset = queryset.filter(society_id=society_id)
+
+        if rating:
+            try:
+                queryset = queryset.filter(rating=int(rating))
+            except ValueError:
+                pass
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_reviews(self, request):
@@ -199,11 +311,29 @@ class ReviewResponseViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewResponseSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        review = serializer.validated_data["review"]
+        is_admin = Membership.objects.filter(
+            user=self.request.user,
+            society=review.society,
+            role="admin",
+        ).exists()
+
+        if not is_admin:
+            raise PermissionDenied("Only society admins can respond to reviews.")
+
+        serializer.save(admin=self.request.user)
+
 
 class ReviewReactionViewSet(viewsets.ModelViewSet):
     queryset = ReviewReaction.objects.all()
     serializer_class = ReviewReactionSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return ReviewReaction.objects.all()
+        return ReviewReaction.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         """Automatically set the user when creating a reaction"""
