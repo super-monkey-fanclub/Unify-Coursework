@@ -75,6 +75,10 @@ class Review(models.Model):
     class Meta:
         unique_together = ('user', 'society')
 
+    def __str__(self):
+        # Show reviewer email and UP number to make admin listings clearer.
+        return f"{self.user.email} ({self.user.up_number})"
+
 class ReviewResponse(models.Model):
     review = models.ForeignKey(Review, on_delete=models.CASCADE)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
