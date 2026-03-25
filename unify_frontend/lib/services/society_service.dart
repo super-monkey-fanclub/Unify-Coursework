@@ -85,4 +85,85 @@ class SocietyService {
       };
     }
   }
+
+  /// Fetch reviews for a given society name.
+  /// Returns a map with 'success', and on success 'reviews' as List<Map>.
+  Future<Map<String, dynamic>> getReviews({
+    required String societyName,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '$_baseUrl/reviews/?society=${Uri.encodeQueryComponent(societyName)}',
+      );
+
+      final response = await http
+          .get(uri)
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body =
+          jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final List<dynamic> raw = body['reviews'] as List<dynamic>? ?? [];
+        return {
+          'success': true,
+          'reviews': raw.cast<Map<String, dynamic>>(),
+        };
+      }
+
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Could not load reviews.',
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to the server.',
+      };
+    }
+  }
+
+  /// Submit a review for a society by a given user.
+  /// Returns a map with 'success' and 'message'.
+  Future<Map<String, dynamic>> submitReview({
+    required String email,
+    required String societyName,
+    required int rating,
+    required String comment,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/reviews/add/'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+              'society_name': societyName,
+              'rating': rating,
+              'comment': comment,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body =
+          jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'message': body['message'] ?? 'Review submitted.',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Could not submit review.',
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to the server.',
+      };
+    }
+  }
 }

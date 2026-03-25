@@ -435,25 +435,76 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   final TextEditingController _reviewName = TextEditingController();
   final TextEditingController _reviewComment = TextEditingController();
   int _rating = 5;
+  List<SocietyReview> _reviews = [];
+  bool _loadingReviews = false;
 
-  final List<SocietyReview> _reviews = [
-    const SocietyReview(
-      author: 'Student A',
-      rating: 5,
-      comment: 'Great people and fun events.',
-    ),
-    const SocietyReview(
-      author: 'Student B',
-      rating: 4,
-      comment: 'Really welcoming atmosphere.',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadReviews();
+    _checkMembership();
+  }
 
   @override
   void dispose() {
     _reviewName.dispose();
     _reviewComment.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadReviews() async {
+  setState(() {
+    _loadingReviews = true;
+  });
+
+  final result = await _societyService.getReviews(societyName: widget.name);
+
+  if (!mounted) return;
+
+  if (result['success'] == true) {
+    final List<dynamic> raw = result['reviews'] as List<dynamic>? ?? [];
+    setState(() {
+    _reviews = raw
+      .map((e) => e as Map<String, dynamic>)
+      .map(
+        (m) => SocietyReview(
+        author: (m['author'] as String?) ?? 'Anonymous',
+        rating: (m['rating'] as int?) ?? 5,
+        comment: (m['comment'] as String?) ?? '',
+        ),
+      )
+      .toList();
+    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+      result['message']?.toString() ?? 'Could not load reviews.',
+      ),
+    ),
+    );
+  }
+
+  if (mounted) {
+    setState(() {
+    _loadingReviews = false;
+    });
+  }
+  }
+
+  Future<void> _checkMembership() async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    final result = await _societyService.getMySocieties(email: email);
+    if (!mounted || result['success'] != true) return;
+
+    final List<String> names =
+        (result['societies'] as List<String>? ?? <String>[]);
+
+    setState(() {
+      _joined = names.contains(widget.name);
+    });
   }
 
   Future<void> _toggleJoin() async {
@@ -502,33 +553,68 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
-  void _submitReview() {
-    final author = _reviewName.text.trim().isEmpty
-        ? 'Anonymous'
-        : _reviewName.text.trim();
-    final comment = _reviewComment.text.trim();
-
-    if (comment.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a review comment')),
-      );
-      return;
-    }
-
-    setState(() {
-      _reviews.insert(
-        0,
-        SocietyReview(author: author, rating: _rating, comment: comment),
-      );
-      _reviewName.clear();
-      _reviewComment.clear();
-      _rating = 5;
-    });
-
-    FocusScope.of(context).unfocus();
+  Future<void> _submitReview() async {
+  final email = widget.userEmail;
+  if (email == null || email.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Review submitted (placeholder)')),
+    const SnackBar(content: Text('Please log in to write a review.')),
     );
+    return;
+  }
+
+  if (!_joined) {
+    ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('You need to join this society before reviewing.'),
+    ),
+    );
+    return;
+  }
+
+  final author = _reviewName.text.trim().isEmpty
+    ? email
+    : _reviewName.text.trim();
+  final comment = _reviewComment.text.trim();
+
+  if (comment.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Please enter a review comment')),
+    );
+    return;
+  }
+
+  final result = await _societyService.submitReview(
+    email: email,
+    societyName: widget.name,
+    rating: _rating,
+    comment: comment,
+  );
+
+  if (!mounted) return;
+
+  if (result['success'] == true) {
+    _reviewName.clear();
+    _reviewComment.clear();
+    setState(() {
+    _rating = 5;
+    });
+    FocusScope.of(context).unfocus();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(result['message'] as String)),
+    );
+
+    // Refresh from backend so list matches server.
+    await _loadReviews();
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+      result['message']?.toString() ?? 'Could not submit review.',
+      ),
+    ),
+    );
+  }
   }
 
   @override
@@ -547,15 +633,17 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                 widget.imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  color:
+                      Theme.of(context).colorScheme.primary.withOpacity(0.4),
                   child: Icon(widget.icon, size: 80, color: Colors.white),
                 ),
                 loadingBuilder: (_, child, progress) {
                   if (progress == null) return child;
                   return Container(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withOpacity(0.2),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withOpacity(0.2),
                     child: const Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     ),
@@ -575,14 +663,17 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primary,
                         child: Icon(widget.icon, color: Colors.white, size: 28),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           widget.name,
-                          style: Theme.of(context).textTheme.headlineSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -611,7 +702,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
-                  if (_reviews.isEmpty)
+                  if (_loadingReviews)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_reviews.isEmpty)
                     Text(
                       'No reviews yet.',
                       style: TextStyle(color: Colors.grey.shade600),
@@ -628,50 +721,59 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                       ),
                     ),
                   const SizedBox(height: 24),
-                  Text(
-                    'Write a review',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _reviewName,
-                    decoration: const InputDecoration(
-                      labelText: 'Name (optional)',
-                      border: OutlineInputBorder(),
+                  if (_joined && widget.userEmail != null) ...[
+                    Text(
+                      'Write a review',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
-                    value: _rating,
-                    decoration: const InputDecoration(
-                      labelText: 'Rating',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _reviewName,
+                      decoration: const InputDecoration(
+                        labelText: 'Name (optional)',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                    items: const [1, 2, 3, 4, 5]
-                        .map(
-                          (v) =>
-                              DropdownMenuItem(value: v, child: Text('$v / 5')),
-                        )
-                        .toList(),
-                    onChanged: (v) {
-                      if (v == null) return;
-                      setState(() => _rating = v);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _reviewComment,
-                    decoration: const InputDecoration(
-                      labelText: 'Your review',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: _rating,
+                      decoration: const InputDecoration(
+                        labelText: 'Rating',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [1, 2, 3, 4, 5]
+                          .map(
+                            (v) => DropdownMenuItem<int>(
+                              value: v,
+                              child: Text('$v / 5'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _rating = v);
+                      },
                     ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _submitReview,
-                    child: const Text('Submit review'),
-                  ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _reviewComment,
+                      decoration: const InputDecoration(
+                        labelText: 'Your review',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _submitReview,
+                      child: const Text('Submit review'),
+                    ),
+                  ] else ...[
+                    Text(
+                      'Join this society and log in to write a review.',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ],
                 ],
               ),
             ),
