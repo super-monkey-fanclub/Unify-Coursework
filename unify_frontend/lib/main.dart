@@ -99,11 +99,19 @@ class _HomePageState extends State<HomePage> {
                     ),
                   )
                   .then((value) {
-                // value is a user map on login, or null on sign-out.
-                if (!mounted) return;
-                setState(() {
-                  _currentUser = value as Map<String, dynamic>?;
-                });
+                if (!mounted || value == null) return; // back arrow: no change
+
+                if (value is Map<String, dynamic> && value['__logout__'] == true) {
+                  // Explicit sign-out
+                  setState(() {
+                    _currentUser = null;
+                  });
+                } else if (value is Map<String, dynamic>) {
+                  // Logged-in user info
+                  setState(() {
+                    _currentUser = value;
+                  });
+                }
               });
             },
             icon: const Icon(Icons.person, color: Colors.white),
@@ -197,10 +205,17 @@ class _HomePageState extends State<HomePage> {
                         ),
                       )
                       .then((value) {
-                    if (!mounted) return;
-                    setState(() {
-                      _currentUser = value as Map<String, dynamic>?;
-                    });
+                    if (!mounted || value == null) return; // back arrow: no change
+
+                    if (value is Map<String, dynamic> && value['__logout__'] == true) {
+                      setState(() {
+                        _currentUser = null;
+                      });
+                    } else if (value is Map<String, dynamic>) {
+                      setState(() {
+                        _currentUser = value;
+                      });
+                    }
                   });
                   },
                   style: ElevatedButton.styleFrom(

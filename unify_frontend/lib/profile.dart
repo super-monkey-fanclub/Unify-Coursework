@@ -78,8 +78,8 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                // Pop back to the caller indicating sign-out.
-                Navigator.of(context).pop(null);
+                // Pop back to the caller indicating sign-out explicitly.
+                Navigator.of(context).pop({'__logout__': true});
               },
               icon: const Icon(Icons.logout),
               label: const Text('Sign out'),
