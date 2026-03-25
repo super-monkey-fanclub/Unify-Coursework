@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from core.views import register_view, login_view
+from core.views import register_view, login_view, join_society_view, my_societies_view
 
 
 urlpatterns = [
@@ -25,4 +25,7 @@ urlpatterns = [
     # Simple JSON API for sign up and login
     path("api/auth/register/", register_view, name="api-register"),
     path("api/auth/login/", login_view, name="api-login"),
+    # Societies/memberships
+    path("api/societies/join/", join_society_view, name="api-join-society"),
+    path("api/societies/my/", my_societies_view, name="api-my-societies"),
 ]

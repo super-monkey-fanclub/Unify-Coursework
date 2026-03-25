@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'services/society_service.dart';
+
 class SocietiesPage extends StatefulWidget {
-  const SocietiesPage({super.key});
+  final String? userEmail;
+
+  const SocietiesPage({super.key, this.userEmail});
 
   @override
   State<SocietiesPage> createState() => _SocietiesPageState();
@@ -9,6 +13,7 @@ class SocietiesPage extends StatefulWidget {
 
 class _SocietiesPageState extends State<SocietiesPage> {
   final TextEditingController _searchController = TextEditingController();
+  final SocietyService _societyService = SocietyService();
   final List<String> _allSocieties = [
     'Art Society',
     'Anime Society',
@@ -75,6 +80,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
   };
 
   late List<String> _filtered;
+  List<String> _mySocieties = [];
+  bool _showMySocieties = false;
+  bool _loadingMySocieties = false;
 
   @override
   void initState() {
@@ -85,15 +93,58 @@ class _SocietiesPageState extends State<SocietiesPage> {
 
   void _onSearch() {
     final q = _searchController.text.toLowerCase();
+    final source = _showMySocieties ? _mySocieties : _allSocieties;
     setState(() {
       if (q.isEmpty) {
-        _filtered = List.from(_allSocieties);
+		_filtered = List.from(source);
       } else {
-        _filtered = _allSocieties
+		_filtered = source
             .where((s) => s.toLowerCase().contains(q))
             .toList();
       }
     });
+  }
+
+  Future<void> _loadMySocieties() async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to see My societies.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _loadingMySocieties = true;
+    });
+
+    final result = await _societyService.getMySocieties(email: email);
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final List<String> names =
+          (result['societies'] as List<String>? ?? <String>[]);
+      setState(() {
+        _mySocieties = names;
+        _showMySocieties = true;
+      });
+      _onSearch();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Could not load My societies.',
+          ),
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _loadingMySocieties = false;
+      });
+    }
   }
 
   @override
@@ -137,6 +188,34 @@ class _SocietiesPageState extends State<SocietiesPage> {
                     filled: true,
                     fillColor: Colors.grey.shade100,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All societies'),
+                      selected: !_showMySocieties,
+                      onSelected: (selected) {
+                        if (!selected) return;
+                        setState(() {
+                          _showMySocieties = false;
+                        });
+                        _onSearch();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(
+                        _loadingMySocieties ? 'My societies…' : 'My societies',
+                      ),
+                      selected: _showMySocieties,
+                      onSelected: (selected) {
+                        if (!selected) return;
+                        _loadMySocieties();
+                      },
+                    ),
+                  ],
                 ),
                 if (_searchController.text.isNotEmpty)
                   Container(
@@ -223,6 +302,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
                                 'Description coming soon.',
                             imageUrl: imageUrl,
                             icon: _icons[name] ?? Icons.groups,
+                            userEmail: widget.userEmail,
                           ),
                         ),
                       );
@@ -332,6 +412,7 @@ class SocietyDetailsPage extends StatefulWidget {
   final String description;
   final String imageUrl;
   final IconData icon;
+  final String? userEmail;
 
   const SocietyDetailsPage({
     super.key,
@@ -339,6 +420,7 @@ class SocietyDetailsPage extends StatefulWidget {
     required this.description,
     required this.imageUrl,
     required this.icon,
+    this.userEmail,
   });
 
   @override
@@ -347,6 +429,8 @@ class SocietyDetailsPage extends StatefulWidget {
 
 class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   bool _joined = false;
+
+  final SocietyService _societyService = SocietyService();
 
   final TextEditingController _reviewName = TextEditingController();
   final TextEditingController _reviewComment = TextEditingController();
@@ -372,19 +456,50 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     super.dispose();
   }
 
-  void _toggleJoin() {
-    setState(() {
-      _joined = !_joined;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _joined
-              ? 'Joined ${widget.name} (placeholder)'
-              : 'Left ${widget.name} (placeholder)',
-        ),
-      ),
-    );
+  Future<void> _toggleJoin() async {
+    // Require a logged-in user (email) to join.
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in before joining.')),
+      );
+      return;
+    }
+
+    if (!_joined) {
+      final result = await _societyService.joinSociety(
+        email: email,
+        societyName: widget.name,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        setState(() {
+          _joined = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] as String)),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message']?.toString() ?? 'Could not join society.',
+            ),
+          ),
+        );
+      }
+    } else {
+      // For now, just toggle locally; a leave endpoint could be added later.
+      setState(() {
+        _joined = false;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Left ${widget.name}')), 
+      );
+    }
   }
 
   void _submitReview() {

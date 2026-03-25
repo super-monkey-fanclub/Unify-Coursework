@@ -46,6 +46,8 @@ class _HomePageState extends State<HomePage> {
   ];
   late List<String> _filteredItems;
 
+  Map<String, dynamic>? _currentUser;
+
   @override
   void initState() {
     super.initState();
@@ -90,9 +92,15 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Account',
             onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const AuthPage(),
-              ));
+        Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const AuthPage()))
+          .then((value) {
+          if (value != null && mounted) {
+            setState(() {
+              _currentUser = value as Map<String, dynamic>;
+            });
+          }
+          });
             },
             icon: const Icon(Icons.person, color: Colors.white),
           ),
@@ -154,7 +162,11 @@ class _HomePageState extends State<HomePage> {
                 ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const SocietiesPage(),
+            builder: (_) => SocietiesPage(
+            userEmail: _currentUser != null
+              ? _currentUser!['email'] as String?
+              : null,
+            ),
                     ));
                   },
                   style: ElevatedButton.styleFrom(
@@ -174,9 +186,15 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const AuthPage(),
-                    ));
+          Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const AuthPage()))
+            .then((value) {
+            if (value != null && mounted) {
+              setState(() {
+                _currentUser = value as Map<String, dynamic>;
+              });
+            }
+            });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.secondary,
