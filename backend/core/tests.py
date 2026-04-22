@@ -109,6 +109,7 @@ class PollPermissionsAndVotingTests(APITestCase):
 		)
 		self.assertEqual(second_vote.status_code, status.HTTP_400_BAD_REQUEST)
 		self.assertEqual(PollVote.objects.filter(user=self.member_user, poll=self.poll).count(), 1)
+		self.assertNotIn("user", first_vote.data)
 
 	def test_outsider_cannot_vote(self):
 		self.client.force_authenticate(user=self.outsider_user)
@@ -158,6 +159,35 @@ class ReviewOwnershipTests(APITestCase):
 		response = self.client.post(
 			reverse("review-list"),
 			{"society": self.society.id, "rating": 6, "comment": "Too high"},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+	def test_society_admin_can_delete_review(self):
+		admin_user = User.objects.create_user(
+			username="review_admin",
+			password="StrongPass123!",
+			up_number="up6667777",
+		)
+		Membership.objects.create(user=admin_user, society=self.society, role="admin")
+
+		self.client.force_authenticate(user=admin_user)
+		response = self.client.delete(reverse("review-detail", args=[self.review.id]))
+		self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+		self.assertFalse(Review.objects.filter(id=self.review.id).exists())
+
+	def test_review_requires_two_week_membership(self):
+		new_member = User.objects.create_user(
+			username="new_member",
+			password="StrongPass123!",
+			up_number="up7778888",
+		)
+		Membership.objects.create(user=new_member, society=self.society, role="member")
+
+		self.client.force_authenticate(user=new_member)
+		response = self.client.post(
+			reverse("review-list"),
+			{"society": self.society.id, "rating": 4, "comment": "Too new"},
 			format="json",
 		)
 		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -261,6 +291,59 @@ class NotificationsAndEventsTests(APITestCase):
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		notification.refresh_from_db()
 		self.assertTrue(notification.is_read)
+
+
+class ReviewReactionsTests(APITestCase):
+	def setUp(self):
+		self.author = User.objects.create_user(
+			username="reaction_author",
+			password="StrongPass123!",
+			up_number="up9990001",
+		)
+		self.reactor = User.objects.create_user(
+			username="reaction_user",
+			password="StrongPass123!",
+			up_number="up9990002",
+		)
+		self.admin_user = User.objects.create_user(
+			username="reaction_admin",
+			password="StrongPass123!",
+			up_number="up9990003",
+		)
+		self.society = Society.objects.create(
+			name="Drama Society",
+			description="A place for drama",
+			category="Arts",
+		)
+		Membership.objects.create(user=self.author, society=self.society, role="member")
+		Membership.objects.create(user=self.reactor, society=self.society, role="member")
+		Membership.objects.create(user=self.admin_user, society=self.society, role="admin")
+		Membership.objects.filter(user=self.author, society=self.society).update(created_at=timezone.now() - timedelta(days=15))
+		self.review = Review.objects.create(
+			user=self.author,
+			society=self.society,
+			rating=5,
+			comment="Great society",
+		)
+
+	def test_like_creates_notification_for_author(self):
+		self.client.force_authenticate(user=self.reactor)
+		response = self.client.post(
+			reverse("reviewreaction-list"),
+			{"review": self.review.id, "reaction_type": "like"},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(Notification.objects.filter(user=self.author, title="Review liked").count(), 1)
+
+	def test_admin_cannot_react_to_review(self):
+		self.client.force_authenticate(user=self.admin_user)
+		response = self.client.post(
+			reverse("reviewreaction-list"),
+			{"review": self.review.id, "reaction_type": "like"},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class ThrottlingTests(APITestCase):

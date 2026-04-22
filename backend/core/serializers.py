@@ -1,5 +1,10 @@
+from datetime import timedelta
+import re
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.utils import timezone
 from .models import (
     User,
     Society,
@@ -24,19 +29,24 @@ class UserSerializer(serializers.ModelSerializer):
 class SocietySerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     is_member = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
     
     class Meta:
         model = Society
-        fields = ["id", "name", "description", "category", "created_at", "member_count", "is_member"]
+        fields = ["id", "name", "description", "category", "created_at", "member_count", "is_member", "avg_rating"]
     
     def get_member_count(self, obj):
-        return Membership.objects.filter(society=obj).count()
+        return getattr(obj, "member_count", Membership.objects.filter(society=obj).count())
     
     def get_is_member(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return Membership.objects.filter(society=obj, user=request.user).exists()
         return False
+
+    def get_avg_rating(self, obj):
+        avg_rating = getattr(obj, "avg_rating", None)
+        return round(avg_rating, 1) if avg_rating is not None else None
 
 
 class MembershipSerializer(serializers.ModelSerializer):
@@ -61,9 +71,30 @@ class PollSerializer(serializers.ModelSerializer):
     def validate(self, data):
         opens_at = data.get("opens_at")
         closes_at = data.get("closes_at")
+        society = data.get("society")
+        title = data.get("title")
+        description = data.get("description")
 
         if opens_at and closes_at and opens_at >= closes_at:
             raise serializers.ValidationError("opens_at must be earlier than closes_at.")
+
+        if opens_at and closes_at:
+            duration = closes_at - opens_at
+            if duration < timedelta(hours=24):
+                raise serializers.ValidationError("Polls must run for at least 24 hours.")
+            if duration > timedelta(days=7):
+                raise serializers.ValidationError("Polls must run for no more than 7 days.")
+
+        if society and title and description:
+            duplicate_query = Poll.objects.filter(
+                society=society,
+                title__iexact=title,
+                description__iexact=description,
+            )
+            if self.instance is not None:
+                duplicate_query = duplicate_query.exclude(pk=self.instance.pk)
+            if duplicate_query.exists():
+                raise serializers.ValidationError("An identical poll already exists for this society.")
 
         return data
     
@@ -90,8 +121,8 @@ class PollVoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollVote
-        fields = ["id", "user", "poll", "option", "created_at"]
-        read_only_fields = ["user", "created_at"]
+        fields = ["id", "poll", "option", "created_at"]
+        read_only_fields = ["created_at"]
 
     def validate(self, data):
         request = self.context.get("request")
@@ -127,22 +158,62 @@ class ReviewSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     response_count = serializers.SerializerMethodField()
     reaction_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Review
-        fields = ["id", "user", "user_username", "society", "rating", "comment", "created_at", "response_count", "reaction_count"]
-        read_only_fields = ["user", "created_at", "response_count", "reaction_count"]
+        fields = ["id", "user", "user_username", "society", "rating", "comment", "created_at", "response_count", "reaction_count", "like_count", "dislike_count"]
+        read_only_fields = ["user", "created_at", "response_count", "reaction_count", "like_count", "dislike_count"]
 
     def validate_rating(self, value):
         if value < 1 or value > 5:
             raise serializers.ValidationError("Rating must be between 1 and 5.")
         return value
+
+    def validate(self, data):
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else data.get("user")
+        if self.instance is not None and user is None:
+            user = self.instance.user
+
+        society = data.get("society") or getattr(self.instance, "society", None)
+        comment = data.get("comment", getattr(self.instance, "comment", ""))
+
+        if user is None:
+            raise serializers.ValidationError("Authentication is required to review.")
+
+        if society is None:
+            raise serializers.ValidationError("Society is required.")
+
+        membership = Membership.objects.filter(user=user, society=society).first()
+        if membership is None:
+            raise serializers.ValidationError("Only members of this society can leave a review.")
+
+        if timezone.now() - membership.created_at < timedelta(days=14):
+            raise serializers.ValidationError("You must be a member for at least 2 weeks before leaving a review.")
+
+        banned_words = getattr(settings, "BANNED_REVIEW_WORDS", [])
+        if comment and banned_words:
+            lowered_comment = comment.lower()
+            for bad_word in banned_words:
+                pattern = r"\\b" + re.escape(bad_word.lower()) + r"\\b"
+                if re.search(pattern, lowered_comment):
+                    raise serializers.ValidationError("Your review contains inappropriate language and cannot be submitted.")
+
+        return data
     
     def get_response_count(self, obj):
         return ReviewResponse.objects.filter(review=obj).count()
     
     def get_reaction_count(self, obj):
         return ReviewReaction.objects.filter(review=obj).count()
+
+    def get_like_count(self, obj):
+        return ReviewReaction.objects.filter(review=obj, reaction_type="like").count()
+
+    def get_dislike_count(self, obj):
+        return ReviewReaction.objects.filter(review=obj, reaction_type="dislike").count()
 
 
 class ReviewResponseSerializer(serializers.ModelSerializer):
@@ -168,6 +239,9 @@ class ReviewReactionSerializer(serializers.ModelSerializer):
 
         if review is None:
             raise serializers.ValidationError("Review is required.")
+
+        if Membership.objects.filter(user=user, role="admin").exists():
+            raise serializers.ValidationError("Admins cannot like or dislike reviews.")
 
         if ReviewReaction.objects.filter(user=user, review=review).exists():
             raise serializers.ValidationError("You have already reacted to this review.")

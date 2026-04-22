@@ -35,3 +35,25 @@ class IsSocietyAdminForObject(BasePermission):
             society_id=society_id,
             role="admin",
         ).exists()
+
+
+class IsReviewOwnerOrSocietyAdminForDelete(BasePermission):
+    """Allow review owners to manage their own review and society admins to delete reviews."""
+
+    message = "You do not have permission to modify this review."
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+
+        if getattr(obj, "user_id", None) == getattr(request.user, "id", None):
+            return True
+
+        if request.method == "DELETE":
+            return Membership.objects.filter(
+                user=request.user,
+                society_id=getattr(obj, "society_id", None),
+                role="admin",
+            ).exists()
+
+        return False

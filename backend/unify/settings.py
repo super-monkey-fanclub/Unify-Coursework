@@ -141,3 +141,9 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+BANNED_REVIEW_WORDS = [
+    'abuse',
+    'hate',
+    'idiot',
+]

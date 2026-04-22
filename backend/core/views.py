@@ -7,9 +7,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Q
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
+from datetime import timedelta
 from .serializers import RegisterSerializer
-from .permissions import IsOwnerOrReadOnly, IsSocietyAdminForObject
+from .permissions import IsOwnerOrReadOnly, IsSocietyAdminForObject, IsReviewOwnerOrSocietyAdminForDelete
 from .throttles import RegisterRateThrottle, LoginRateThrottle, WriteActionRateThrottle
 from .models import (
     Society,
@@ -46,11 +49,14 @@ class SocietyViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ["name", "category", "description"]
-    ordering_fields = ["created_at", "name"]
+    ordering_fields = ["created_at", "name", "avg_rating", "member_count"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        queryset = Society.objects.all().annotate(avg_rating=Avg("review__rating"))
+        queryset = Society.objects.all().annotate(
+            avg_rating=Avg("review__rating"),
+            member_count=Count("membership", distinct=True),
+        )
 
         category = self.request.query_params.get("category")
         min_rating = self.request.query_params.get("min_rating")
@@ -149,6 +155,41 @@ class SocietyViewSet(viewsets.ModelViewSet):
         ]
         return Response(data)
 
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def monthly_rating_trends(self, request, pk=None):
+        """Return monthly average ratings for the society (admins only)."""
+        society = self.get_object()
+        is_admin = Membership.objects.filter(
+            user=request.user,
+            society=society,
+            role='admin',
+        ).exists()
+        if not is_admin:
+            raise PermissionDenied("Only society admins can view monthly rating trends.")
+
+        trend_rows = (
+            Review.objects.filter(society=society)
+            .annotate(month=TruncMonth('created_at'))
+            .values('month')
+            .annotate(avg_rating=Avg('rating'), review_count=Count('id'))
+            .order_by('month')
+        )
+
+        trends = [
+            {
+                "month": row["month"].date().isoformat() if row["month"] else None,
+                "avg_rating": round(row["avg_rating"], 1) if row["avg_rating"] is not None else None,
+                "review_count": row["review_count"],
+            }
+            for row in trend_rows
+        ]
+
+        return Response({
+            "society_id": society.id,
+            "society_name": society.name,
+            "trends": trends,
+        })
+
 
 class MembershipViewSet(viewsets.ModelViewSet):
     queryset = Membership.objects.all()
@@ -207,6 +248,24 @@ class PollViewSet(viewsets.ModelViewSet):
             for member in members
             if member.user_id != self.request.user.id
         ])
+
+    def destroy(self, request, *args, **kwargs):
+        poll = self.get_object()
+        if timezone.now() - poll.created_at < timedelta(minutes=30):
+            raise PermissionDenied("Polls can only be deleted after 30 minutes have passed.")
+
+        members = Membership.objects.filter(society=poll.society).select_related("user")
+        Notification.objects.bulk_create([
+            Notification(
+                user=member.user,
+                title="Poll removed",
+                message=f"{poll.title} was removed from {poll.society.name}.",
+            )
+            for member in members
+            if member.user_id != request.user.id
+        ])
+
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['get'])
     def results(self, request, pk=None):
@@ -281,6 +340,9 @@ class PollVoteViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_classes = [WriteActionRateThrottle]
 
+    def get_queryset(self):
+        return PollVote.objects.filter(user=self.request.user)
+
     def perform_create(self, serializer):
         """Automatically set the user when creating a vote"""
         serializer.save(user=self.request.user)
@@ -292,16 +354,20 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ["comment", "society__name", "user__username"]
-    ordering_fields = ["created_at", "rating"]
+    ordering_fields = ["created_at", "rating", "reaction_count", "like_count", "dislike_count"]
     ordering = ["-created_at"]
 
     def get_permissions(self):
         if self.action in ["update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsOwnerOrReadOnly()]
+            return [IsAuthenticated(), IsReviewOwnerOrSocietyAdminForDelete()]
         return super().get_permissions()
 
     def get_queryset(self):
-        queryset = Review.objects.all()
+        queryset = Review.objects.all().annotate(
+            reaction_count=Count("reviewreaction", distinct=True),
+            like_count=Count("reviewreaction", filter=Q(reviewreaction__reaction_type="like"), distinct=True),
+            dislike_count=Count("reviewreaction", filter=Q(reviewreaction__reaction_type="dislike"), distinct=True),
+        )
 
         society_id = self.request.query_params.get("society")
         rating = self.request.query_params.get("rating")
@@ -374,7 +440,14 @@ class ReviewReactionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Automatically set the user when creating a reaction"""
-        serializer.save(user=self.request.user)
+        reaction = serializer.save(user=self.request.user)
+
+        if reaction.reaction_type == "like":
+            Notification.objects.create(
+                user=reaction.review.user,
+                title="Review liked",
+                message=f"Your review in {reaction.review.society.name} received a like.",
+            )
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
