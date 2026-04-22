@@ -3,6 +3,7 @@ import re
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
 from django.conf import settings
 from django.utils import timezone
 from .models import (
@@ -335,18 +336,38 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password_confirmation = serializers.CharField(write_only=True)
     opt_in_email = serializers.BooleanField(required=False, default=False)
+    account_type = serializers.ChoiceField(choices=[("member", "Member"), ("admin", "Admin")], required=False, default="member")
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "password_confirmation", "up_number", "opt_in_email")
+        fields = (
+            "username",
+            "email",
+            "password",
+            "password_confirmation",
+            "up_number",
+            "opt_in_email",
+            "account_type",
+        )
 
     def validate(self, attrs):
         if attrs.get("password") != attrs.get("password_confirmation"):
             raise serializers.ValidationError({"password_confirmation": "Passwords do not match."})
+
+        account_type = attrs.get("account_type", "member")
+        up_number = attrs.get("up_number", "")
+        if account_type == "member" and up_number.upper().startswith("A"):
+            raise serializers.ValidationError({"up_number": "Member UP numbers cannot start with 'A'."})
+
         return attrs
 
     def create(self, validated_data):
         validated_data.pop("password_confirmation", None)
+        account_type = validated_data.pop("account_type", "member")
+        up_number = validated_data["up_number"]
+        if account_type == "admin" and not up_number.upper().startswith("A"):
+            validated_data["up_number"] = f"A{up_number}"
+
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
@@ -355,3 +376,57 @@ class RegisterSerializer(serializers.ModelSerializer):
             opt_in_email=validated_data.get("opt_in_email", False),
         )
         return user
+
+
+class AccountSettingsSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=False, allow_blank=False)
+    password_confirmation = serializers.CharField(write_only=True, required=False, allow_blank=False)
+
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "email",
+            "up_number",
+            "opt_in_email",
+            "password",
+            "password_confirmation",
+        )
+
+    def validate(self, attrs):
+        password = attrs.get("password")
+        password_confirmation = attrs.get("password_confirmation")
+        current_user = self.instance
+
+        if password is not None:
+            if not password_confirmation:
+                raise serializers.ValidationError({"password_confirmation": "Password confirmation is required."})
+            if password != password_confirmation:
+                raise serializers.ValidationError({"password_confirmation": "Passwords do not match."})
+
+            for existing_user in User.objects.exclude(pk=current_user.pk).only("id", "password"):
+                if check_password(password, existing_user.password):
+                    raise serializers.ValidationError({"password": "This password is already used by another account."})
+
+        up_number = attrs.get("up_number")
+        if up_number is not None:
+            is_admin_account = current_user.up_number.upper().startswith("A")
+            if is_admin_account and not up_number.upper().startswith("A"):
+                attrs["up_number"] = f"A{up_number}"
+            if not is_admin_account and up_number.upper().startswith("A"):
+                raise serializers.ValidationError({"up_number": "Member UP numbers cannot start with 'A'."})
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        validated_data.pop("password_confirmation", None)
+
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+
+        if password is not None:
+            instance.set_password(password)
+
+        instance.save()
+        return instance

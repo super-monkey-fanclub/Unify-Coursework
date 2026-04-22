@@ -11,7 +11,7 @@ from django.db.models import Count, Avg, Q
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from datetime import timedelta
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, AccountSettingsSerializer, UserSerializer
 from .permissions import IsOwnerOrReadOnly, IsSocietyAdminForObject, IsReviewOwnerOrSocietyAdminForDelete
 from .throttles import RegisterRateThrottle, LoginRateThrottle, WriteActionRateThrottle
 from .models import (
@@ -536,11 +536,18 @@ def login(request):
 
     username = request.data.get("username")
     password = request.data.get("password")
+    account_type = request.data.get("account_type")
 
     user = authenticate(username=username, password=password)
 
     if user is None:
         return Response({"error": "Invalid credentials"}, status=401)
+
+    is_admin_account = user.up_number.upper().startswith("A")
+    if account_type == "admin" and not is_admin_account:
+        return Response({"error": "This account is not registered as an admin account."}, status=403)
+    if account_type == "member" and is_admin_account:
+        return Response({"error": "This account is registered as an admin account."}, status=403)
 
     refresh = RefreshToken.for_user(user)
 
@@ -561,6 +568,21 @@ def me(request):
         })
 
     return Response({"error": "Not authenticated"}, status=401)
+
+
+@api_view(['GET', 'PATCH'])
+def account_settings(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "Not authenticated"}, status=401)
+
+    if request.method == 'GET':
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    serializer = AccountSettingsSerializer(instance=request.user, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(UserSerializer(request.user).data)
 
 
 @api_view(['GET'])
@@ -599,4 +621,5 @@ def api_root(request):
         'register': reverse('register', request=request),
         'login': reverse('login', request=request),
         'me': reverse('me', request=request),
+        'account_settings': reverse('account-settings', request=request),
     })

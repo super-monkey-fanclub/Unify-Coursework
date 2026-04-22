@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import register, login, me, api_root
+from .views import register, login, me, api_root, account_settings
 from django.urls import path
 from .views import (
     SocietyViewSet,
@@ -35,4 +35,5 @@ urlpatterns = [
     path('register/', register, name='register'),
     path('login/', login, name='login'),
     path('me/', me, name='me'),
+    path('account-settings/', account_settings, name='account-settings'),
 ]

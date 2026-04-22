@@ -45,6 +45,38 @@ class AuthEndpointsTests(APITestCase):
 		self.assertEqual(me_response.status_code, status.HTTP_200_OK)
 		self.assertEqual(me_response.data["username"], "newuser")
 
+	def test_admin_registration_prefixes_up_number_with_a(self):
+		response = self.client.post(
+			reverse("register"),
+			{
+				"username": "leader",
+				"email": "leader@example.com",
+				"password": "StrongPass123!",
+				"password_confirmation": "StrongPass123!",
+				"up_number": "up1234567",
+				"account_type": "admin",
+			},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		created_user = User.objects.get(username="leader")
+		self.assertTrue(created_user.up_number.startswith("A"))
+
+	def test_login_rejects_wrong_account_type(self):
+		member_user = User.objects.create_user(
+			username="plainmember",
+			password="StrongPass123!",
+			up_number="up6767676",
+		)
+		self.client.force_authenticate(user=None)
+
+		admin_login_attempt = self.client.post(
+			reverse("login"),
+			{"username": member_user.username, "password": "StrongPass123!", "account_type": "admin"},
+			format="json",
+		)
+		self.assertEqual(admin_login_attempt.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class PollPermissionsAndVotingTests(APITestCase):
 	def setUp(self):
@@ -268,6 +300,55 @@ class ReviewOwnershipTests(APITestCase):
 		response = self.client.post(
 			reverse("review-list"),
 			{"society": self.society.id, "rating": 4, "comment": "Too new"},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class AccountSettingsTests(APITestCase):
+	def setUp(self):
+		self.user = User.objects.create_user(
+			username="settings_user",
+			email="settings@example.com",
+			password="StrongPass123!",
+			up_number="up9191919",
+		)
+		self.other_user = User.objects.create_user(
+			username="other_settings_user",
+			email="other@example.com",
+			password="AnotherPass123!",
+			up_number="up9292929",
+		)
+
+	def test_account_settings_patch_updates_profile(self):
+		self.client.force_authenticate(user=self.user)
+		response = self.client.patch(
+			reverse("account-settings"),
+			{"username": "updated_user", "opt_in_email": True},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.user.refresh_from_db()
+		self.assertEqual(self.user.username, "updated_user")
+		self.assertTrue(self.user.opt_in_email)
+
+	def test_account_settings_password_requires_confirmation(self):
+		self.client.force_authenticate(user=self.user)
+		response = self.client.patch(
+			reverse("account-settings"),
+			{"password": "BrandNew123!"},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+	def test_account_settings_rejects_reused_password(self):
+		self.client.force_authenticate(user=self.user)
+		response = self.client.patch(
+			reverse("account-settings"),
+			{
+				"password": "AnotherPass123!",
+				"password_confirmation": "AnotherPass123!",
+			},
 			format="json",
 		)
 		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
