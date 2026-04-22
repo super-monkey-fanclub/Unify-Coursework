@@ -6,8 +6,10 @@ from django.core import mail
 from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
+from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APITestCase
+from core.management.commands import run_scheduler
 
 from .models import Event, EventRSVP, Membership, Notification, Poll, PollOption, PollVote, Review, Society, User
 from .throttles import RegisterRateThrottle
@@ -305,6 +307,19 @@ class MonthlySocietyNotificationsTests(APITestCase):
 		self.assertTrue(Notification.objects.filter(user=self.member_user, title="Monthly rating reminder").exists())
 		self.assertTrue(Notification.objects.filter(user=self.admin_user, title="Monthly rating trend released").exists())
 		self.assertEqual(len(mail.outbox), 2)
+
+
+class SchedulerCommandTests(APITestCase):
+	@patch("core.management.commands.run_scheduler.BlockingScheduler")
+	def test_run_scheduler_registers_required_jobs(self, scheduler_cls):
+		scheduler_instance = scheduler_cls.return_value
+		scheduler_instance.start.side_effect = KeyboardInterrupt()
+
+		call_command("run_scheduler")
+
+		self.assertEqual(scheduler_instance.add_job.call_count, 2)
+		scheduler_instance.start.assert_called_once()
+		scheduler_instance.shutdown.assert_called_once()
 
 
 class ReviewOwnershipTests(APITestCase):
