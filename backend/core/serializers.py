@@ -70,11 +70,11 @@ class PollSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at", "options", "total_votes"]
 
     def validate(self, data):
-        opens_at = data.get("opens_at")
-        closes_at = data.get("closes_at")
-        society = data.get("society")
-        title = data.get("title")
-        description = data.get("description")
+        opens_at = data.get("opens_at", getattr(self.instance, "opens_at", None))
+        closes_at = data.get("closes_at", getattr(self.instance, "closes_at", None))
+        society = data.get("society", getattr(self.instance, "society", None))
+        title = data.get("title", getattr(self.instance, "title", None))
+        description = data.get("description", getattr(self.instance, "description", None))
 
         if opens_at and closes_at and opens_at >= closes_at:
             raise serializers.ValidationError("opens_at must be earlier than closes_at.")
@@ -139,6 +139,12 @@ class PollVoteSerializer(serializers.ModelSerializer):
 
         if option.poll_id != poll.id:
             raise serializers.ValidationError("Selected option does not belong to this poll.")
+
+        now = timezone.now()
+        if now < poll.opens_at:
+            raise serializers.ValidationError("This poll is not open yet.")
+        if now > poll.closes_at:
+            raise serializers.ValidationError("This poll is already closed.")
 
         #check if user is a member of the society
         if not Membership.objects.filter(user=user, society=poll.society).exists():

@@ -156,6 +156,42 @@ class PollPermissionsAndVotingTests(APITestCase):
 		)
 		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+	def test_member_cannot_vote_before_poll_opens(self):
+		future_poll = Poll.objects.create(
+			society=self.society,
+			title="Future Poll",
+			description="Not open yet",
+			opens_at=timezone.now() + timedelta(hours=2),
+			closes_at=timezone.now() + timedelta(days=2),
+		)
+		future_option = PollOption.objects.create(poll=future_poll, option_text="Option A")
+
+		self.client.force_authenticate(user=self.member_user)
+		response = self.client.post(
+			reverse("pollvote-list"),
+			{"poll": future_poll.id, "option": future_option.id},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+	def test_member_cannot_vote_after_poll_closes(self):
+		closed_poll = Poll.objects.create(
+			society=self.society,
+			title="Closed Poll",
+			description="Already closed",
+			opens_at=timezone.now() - timedelta(days=2),
+			closes_at=timezone.now() - timedelta(minutes=1),
+		)
+		closed_option = PollOption.objects.create(poll=closed_poll, option_text="Option B")
+
+		self.client.force_authenticate(user=self.member_user)
+		response = self.client.post(
+			reverse("pollvote-list"),
+			{"poll": closed_poll.id, "option": closed_option.id},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class PollNotificationFlowTests(APITestCase):
 	def setUp(self):
@@ -231,6 +267,44 @@ class PollNotificationFlowTests(APITestCase):
 		self.assertTrue(Notification.objects.filter(title="Poll ending soon").exists())
 		self.assertTrue(Notification.objects.filter(title="Poll closed").exists())
 		self.assertGreaterEqual(len(mail.outbox), 2)
+
+
+class MonthlySocietyNotificationsTests(APITestCase):
+	def setUp(self):
+		mail.outbox = []
+		self.admin_user = User.objects.create_user(
+			username="monthly_admin",
+			password="StrongPass123!",
+			up_number="AUP123001",
+			email="monthly_admin@example.com",
+			opt_in_email=True,
+		)
+		self.member_user = User.objects.create_user(
+			username="monthly_member",
+			password="StrongPass123!",
+			up_number="up123001",
+			email="monthly_member@example.com",
+			opt_in_email=True,
+		)
+		self.society = Society.objects.create(
+			name="Monthly Society",
+			description="Monthly metrics",
+			category="General",
+		)
+		Membership.objects.create(user=self.admin_user, society=self.society, role="admin")
+		Membership.objects.create(user=self.member_user, society=self.society, role="member")
+		Review.objects.create(
+			user=self.member_user,
+			society=self.society,
+			rating=4,
+			comment="Good month",
+		)
+
+	def test_monthly_command_sends_member_and_admin_notifications(self):
+		call_command("send_monthly_society_notifications")
+		self.assertTrue(Notification.objects.filter(user=self.member_user, title="Monthly rating reminder").exists())
+		self.assertTrue(Notification.objects.filter(user=self.admin_user, title="Monthly rating trend released").exists())
+		self.assertEqual(len(mail.outbox), 2)
 
 
 class ReviewOwnershipTests(APITestCase):
