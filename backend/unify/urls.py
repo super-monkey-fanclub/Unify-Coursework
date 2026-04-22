@@ -24,6 +24,9 @@ from core.views import (
     my_societies_view,
     society_reviews_view,
     add_review_view,
+    react_review_view,
+    admin_delete_review_view,
+    admin_respond_review_view,
 )
 
 
@@ -38,4 +41,7 @@ urlpatterns = [
     # Reviews
     path("api/societies/reviews/", society_reviews_view, name="api-society-reviews"),
     path("api/societies/reviews/add/", add_review_view, name="api-add-review"),
+    path("api/societies/reviews/react/", react_review_view, name="api-react-review"),
+    path("api/societies/reviews/delete/", admin_delete_review_view, name="api-delete-review"),
+    path("api/societies/reviews/respond/", admin_respond_review_view, name="api-respond-review"),
 ]
