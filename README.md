@@ -8,6 +8,10 @@ Michael - up2273239 183396154
 
 ## Backend Quick Start
 
+Run these commands from the repository root by default.
+
+Alternative: you can `cd backend` and use `python manage.py ...`.
+
 ### 1) Install dependencies
 
 ```powershell
@@ -20,6 +24,13 @@ python -m pip install -r requirements.txt
 python backend/manage.py migrate
 ```
 
+Equivalent if you are inside `backend`:
+
+```powershell
+cd backend
+python manage.py migrate
+```
+
 ## Quick Continuous Run (Development)
 
 Use two terminals so both the API and scheduled jobs keep running.
@@ -30,10 +41,24 @@ Use two terminals so both the API and scheduled jobs keep running.
 python backend/manage.py runserver
 ```
 
+Equivalent if you are inside `backend`:
+
+```powershell
+cd backend
+python manage.py runserver
+```
+
 ### Terminal B: Run scheduler
 
 ```powershell
 python backend/manage.py run_scheduler
+```
+
+Equivalent if you are inside `backend`:
+
+```powershell
+cd backend
+python manage.py run_scheduler
 ```
 
 Optional: change poll notification check interval from default 5 minutes.
