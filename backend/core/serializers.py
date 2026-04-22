@@ -333,16 +333,25 @@ User = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    password_confirmation = serializers.CharField(write_only=True)
+    opt_in_email = serializers.BooleanField(required=False, default=False)
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "up_number")
+        fields = ("username", "email", "password", "password_confirmation", "up_number", "opt_in_email")
+
+    def validate(self, attrs):
+        if attrs.get("password") != attrs.get("password_confirmation"):
+            raise serializers.ValidationError({"password_confirmation": "Passwords do not match."})
+        return attrs
 
     def create(self, validated_data):
+        validated_data.pop("password_confirmation", None)
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
-            up_number=validated_data["up_number"]
+            up_number=validated_data["up_number"],
+            opt_in_email=validated_data.get("opt_in_email", False),
         )
         return user

@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core import mail
+from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -20,7 +22,9 @@ class AuthEndpointsTests(APITestCase):
 				"username": "newuser",
 				"email": "newuser@example.com",
 				"password": "StrongPass123!",
+				"password_confirmation": "StrongPass123!",
 				"up_number": "up9999999",
+				"opt_in_email": True,
 			},
 			format="json",
 		)
@@ -119,6 +123,82 @@ class PollPermissionsAndVotingTests(APITestCase):
 			format="json",
 		)
 		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class PollNotificationFlowTests(APITestCase):
+	def setUp(self):
+		mail.outbox = []
+		self.admin_user = User.objects.create_user(
+			username="notify_admin",
+			password="StrongPass123!",
+			up_number="up1212121",
+			email="notify_admin@example.com",
+		)
+		self.member_opt_in = User.objects.create_user(
+			username="notify_member_opt_in",
+			password="StrongPass123!",
+			up_number="up1212122",
+			email="optin@example.com",
+			opt_in_email=True,
+		)
+		self.member_no_opt = User.objects.create_user(
+			username="notify_member_no_opt",
+			password="StrongPass123!",
+			up_number="up1212123",
+			email="noopt@example.com",
+			opt_in_email=False,
+		)
+		self.society = Society.objects.create(
+			name="Notification Society",
+			description="Notification tests",
+			category="General",
+		)
+		Membership.objects.create(user=self.admin_user, society=self.society, role="admin")
+		Membership.objects.create(user=self.member_opt_in, society=self.society, role="member")
+		Membership.objects.create(user=self.member_no_opt, society=self.society, role="member")
+
+	def test_poll_create_sends_email_only_to_opted_in_users(self):
+		self.client.force_authenticate(user=self.admin_user)
+		response = self.client.post(
+			reverse("poll-list"),
+			{
+				"society": self.society.id,
+				"title": "Email Poll",
+				"description": "Check email flow",
+				"opens_at": timezone.now().isoformat(),
+				"closes_at": (timezone.now() + timedelta(days=1)).isoformat(),
+			},
+			format="json",
+		)
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(len(mail.outbox), 1)
+		self.assertEqual(mail.outbox[0].to, ["optin@example.com"])
+
+	def test_scheduled_poll_notifications_send_ending_soon_and_closed(self):
+		soon_poll = Poll.objects.create(
+			society=self.society,
+			title="Soon Poll",
+			description="closing soon",
+			opens_at=timezone.now() - timedelta(days=1),
+			closes_at=timezone.now() + timedelta(minutes=30),
+		)
+		closed_poll = Poll.objects.create(
+			society=self.society,
+			title="Closed Poll",
+			description="already closed",
+			opens_at=timezone.now() - timedelta(days=2),
+			closes_at=timezone.now() - timedelta(minutes=10),
+		)
+
+		call_command("send_poll_notifications")
+
+		soon_poll.refresh_from_db()
+		closed_poll.refresh_from_db()
+		self.assertIsNotNone(soon_poll.ending_soon_notified_at)
+		self.assertIsNotNone(closed_poll.closed_notified_at)
+		self.assertTrue(Notification.objects.filter(title="Poll ending soon").exists())
+		self.assertTrue(Notification.objects.filter(title="Poll closed").exists())
+		self.assertGreaterEqual(len(mail.outbox), 2)
 
 
 class ReviewOwnershipTests(APITestCase):

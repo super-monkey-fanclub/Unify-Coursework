@@ -37,6 +37,8 @@ class Poll(models.Model):
     opens_at = models.DateTimeField()
     closes_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+    ending_soon_notified_at = models.DateTimeField(null=True, blank=True)
+    closed_notified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [

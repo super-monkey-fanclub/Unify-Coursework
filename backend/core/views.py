@@ -27,6 +27,7 @@ from .models import (
     Event,
     EventRSVP,
 )
+from .poll_notifications import notify_poll_created, notify_poll_removed
 
 from .serializers import (
     SocietySerializer,
@@ -238,32 +239,14 @@ class PollViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You must be a society admin to create polls.")
 
         poll = serializer.save()
-        members = Membership.objects.filter(society=society).select_related("user")
-        Notification.objects.bulk_create([
-            Notification(
-                user=member.user,
-                title="New poll created",
-                message=f"{poll.title} was posted in {society.name}.",
-            )
-            for member in members
-            if member.user_id != self.request.user.id
-        ])
+        notify_poll_created(poll, actor_user_id=self.request.user.id)
 
     def destroy(self, request, *args, **kwargs):
         poll = self.get_object()
         if timezone.now() - poll.created_at < timedelta(minutes=30):
             raise PermissionDenied("Polls can only be deleted after 30 minutes have passed.")
 
-        members = Membership.objects.filter(society=poll.society).select_related("user")
-        Notification.objects.bulk_create([
-            Notification(
-                user=member.user,
-                title="Poll removed",
-                message=f"{poll.title} was removed from {poll.society.name}.",
-            )
-            for member in members
-            if member.user_id != request.user.id
-        ])
+        notify_poll_removed(poll, actor_user_id=request.user.id)
 
         return super().destroy(request, *args, **kwargs)
 
