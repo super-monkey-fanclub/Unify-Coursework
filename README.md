@@ -6,14 +6,68 @@ Beau - up2281726 237248106
 Maya - up2266552  198966765
 Michael - up2273239 183396154
 
+## Backend Quick Start
 
-**Server Startup***
+Run these commands from the repository root by default.
+
+Alternative: you can `cd backend` and use `python manage.py ...`.
+
+### 1) Install dependencies
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### 2) Apply migrations
+
+```powershell
+python backend/manage.py migrate
+```
+
+Equivalent if you are inside `backend`:
+
+```powershell
 cd backend
-..\.venv\Scripts\activate
-python manage.py runserver 0.0.0.0:8000
+python manage.py migrate
+```
 
-**Flutter Startup**
-cd "unify_frontend"
-flutter run -d chrome
+## Quick Continuous Run (Development)
 
-maria - use ..\.venv\Scripts\activate.ps1
+Use two terminals so both the API and scheduled jobs keep running.
+
+### Terminal A: Run API server
+
+```powershell
+python backend/manage.py runserver
+```
+
+Equivalent if you are inside `backend`:
+
+```powershell
+cd backend
+python manage.py runserver
+```
+
+### Terminal B: Run scheduler
+
+```powershell
+python backend/manage.py run_scheduler
+```
+
+Equivalent if you are inside `backend`:
+
+```powershell
+cd backend
+python manage.py run_scheduler
+```
+
+Optional: change poll notification check interval from default 5 minutes.
+
+```powershell
+$env:POLL_NOTIFICATIONS_INTERVAL_MINUTES = "10"
+python backend/manage.py run_scheduler
+```
+
+Notes:
+- If Terminal B is closed, scheduled poll/monthly notifications stop.
+- Keep both terminals open during local development.
