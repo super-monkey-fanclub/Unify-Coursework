@@ -418,23 +418,48 @@ class _HeroCarouselState extends State<HeroCarousel> {
   final List<Society> _societies = [
     Society(
       name: 'Art Society',
+      description:
+          'A friendly society for drawing, painting, and creative workshops.',
+      icon: Icons.palette,
+      memberCount: 82,
       rating: 4.8,
       imageUrl:
           'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
     ),
     Society(
       name: 'Anime Society',
+      description: 'Weekly anime screenings and socials for all fans.',
+      icon: Icons.tv,
+      memberCount: 101,
       rating: 4.7,
       imageUrl:
           'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
     ),
     Society(
       name: 'Gaming Society',
+      description: 'Casual and competitive gaming events across many genres.',
+      icon: Icons.sports_esports,
+      memberCount: 174,
       rating: 4.9,
       imageUrl:
           'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
     ),
   ];
+
+  void _openSocietyDetails(Society society) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SocietyDetailsPage(
+          name: society.name,
+          description: society.description,
+          imageUrl: society.imageUrl,
+          icon: society.icon,
+          initialMemberCount: society.memberCount,
+          initialAverageRating: society.rating,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -478,7 +503,11 @@ class _HeroCarouselState extends State<HeroCarousel> {
             },
             itemCount: _societies.length,
             itemBuilder: (context, index) {
-              return SocietyCard(society: _societies[index]);
+              final society = _societies[index];
+              return SocietyCard(
+                society: society,
+                onTap: () => _openSocietyDetails(society),
+              );
             },
           ),
         ),
@@ -509,8 +538,9 @@ class _HeroCarouselState extends State<HeroCarousel> {
 
 class SocietyCard extends StatelessWidget {
   final Society society;
+  final VoidCallback? onTap;
 
-  const SocietyCard({super.key, required this.society});
+  const SocietyCard({super.key, required this.society, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -527,61 +557,67 @@ class SocietyCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.network(
-              society.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: Theme.of(context).colorScheme.primary),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.2),
-                    Colors.black.withOpacity(0.55),
-                  ],
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  society.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: Theme.of(context).colorScheme.primary),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(22.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    society.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      height: 1.1,
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.2),
+                        Colors.black.withOpacity(0.55),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(22.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 24),
-                      const SizedBox(width: 8),
                       Text(
-                        society.rating.toString(),
+                        society.name,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            society.rating.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -590,10 +626,20 @@ class SocietyCard extends StatelessWidget {
 
 class Society {
   final String name;
+  final String description;
+  final IconData icon;
+  final int memberCount;
   final double rating;
   final String imageUrl;
 
-  Society({required this.name, required this.rating, required this.imageUrl});
+  Society({
+    required this.name,
+    required this.description,
+    required this.icon,
+    required this.memberCount,
+    required this.rating,
+    required this.imageUrl,
+  });
 }
 
 class SearchResultsPage extends StatefulWidget {
