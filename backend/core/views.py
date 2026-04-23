@@ -478,6 +478,7 @@ def react_review_view(request: HttpRequest):
             'likes': likes,
             'dislikes': dislikes,
             'user_reaction': reaction_type,
+            'reactor_up_number': user.up_number,
         },
         status=201,
     )
