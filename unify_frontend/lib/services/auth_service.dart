@@ -20,7 +20,9 @@ class AuthService {
           }
           if (value is Map<String, dynamic>) {
             for (final nested in value.values) {
-              if (nested is List && nested.isNotEmpty && nested.first is String) {
+              if (nested is List &&
+                  nested.isNotEmpty &&
+                  nested.first is String) {
                 return nested.first as String;
               }
               if (nested is String && nested.isNotEmpty) return nested;
