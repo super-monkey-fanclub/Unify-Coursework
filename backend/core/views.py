@@ -242,10 +242,10 @@ def society_reviews_view(request: HttpRequest):
     if not society_name:
         return JsonResponse({'error': 'society query parameter is required.'}, status=400)
 
-    try:
-        society = Society.objects.get(name=society_name)
-    except Society.DoesNotExist:
-        return JsonResponse({'error': 'Society not found.'}, status=404)
+    society, _ = Society.objects.get_or_create(
+        name=society_name,
+        defaults={'description': '', 'category': 'General'},
+    )
 
     min_rating = None
     if min_rating_raw:
