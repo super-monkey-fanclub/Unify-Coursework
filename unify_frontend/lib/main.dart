@@ -135,6 +135,9 @@ class _HomePageState extends State<HomePage> {
           userEmail: _currentUser != null
               ? _currentUser!['email'] as String?
               : null,
+          userAccessToken: _currentUser != null
+              ? _currentUser!['access'] as String?
+              : null,
         ),
       ),
     );
@@ -243,7 +246,7 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome${_currentUser == null ? '' : ', ${_currentUser!['name'] ?? 'back'}'}',
+                'Welcome${_currentUser == null ? '' : ', ${_currentUser!['username'] ?? 'back'}'}',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),

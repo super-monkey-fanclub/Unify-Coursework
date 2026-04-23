@@ -22,20 +22,22 @@ class _AuthPageState extends State<AuthPage> {
   final _loginKey = GlobalKey<FormState>();
   final _regKey = GlobalKey<FormState>();
 
-  final TextEditingController _loginEmail = TextEditingController();
+  final TextEditingController _loginUsername = TextEditingController();
   final TextEditingController _loginPassword = TextEditingController();
 
-  final TextEditingController _regName = TextEditingController();
+  final TextEditingController _regUsername = TextEditingController();
   final TextEditingController _regEmail = TextEditingController();
+  final TextEditingController _regUpNumber = TextEditingController();
   final TextEditingController _regPassword = TextEditingController();
   final TextEditingController _regConfirm = TextEditingController();
 
   @override
   void dispose() {
-    _loginEmail.dispose();
+    _loginUsername.dispose();
     _loginPassword.dispose();
-    _regName.dispose();
+    _regUsername.dispose();
     _regEmail.dispose();
+    _regUpNumber.dispose();
     _regPassword.dispose();
     _regConfirm.dispose();
     super.dispose();
@@ -69,10 +71,7 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 8),
             Text(
               email,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -101,17 +100,14 @@ class _AuthPageState extends State<AuthPage> {
           children: [
             const SizedBox(height: 16),
             TextFormField(
-              controller: _loginEmail,
+              controller: _loginUsername,
               decoration: const InputDecoration(
-                labelText: 'Email',
+                labelText: 'Username',
                 border: OutlineInputBorder(),
               ),
-              keyboardType: TextInputType.emailAddress,
               validator: (val) {
                 if (val == null || val.trim().isEmpty)
-                  return 'Email is required';
-                if (!_isValidEmail(val.trim()))
-                  return 'Enter a valid email address';
+                  return 'Username is required';
                 return null;
               },
             ),
@@ -137,14 +133,23 @@ class _AuthPageState extends State<AuthPage> {
 
                       setState(() => _isLoading = true);
                       final result = await _authService.login(
-                        email: _loginEmail.text.trim(),
+                        username: _loginUsername.text.trim(),
                         password: _loginPassword.text,
                       );
                       setState(() => _isLoading = false);
 
                       if (result['success'] == true) {
                         _showMessage('Login successful');
-                        Navigator.of(context).pop(result['user']);
+                        final user = Map<String, dynamic>.from(
+                          (result['user'] as Map<String, dynamic>? ?? {}),
+                        );
+                        if (result['access'] != null) {
+                          user['access'] = result['access'];
+                        }
+                        if (result['refresh'] != null) {
+                          user['refresh'] = result['refresh'];
+                        }
+                        Navigator.of(context).pop(user);
                       } else {
                         _showMessage(result['message'] ?? 'Login failed.');
                       }
@@ -173,9 +178,9 @@ class _AuthPageState extends State<AuthPage> {
           children: [
             const SizedBox(height: 16),
             TextFormField(
-              controller: _regName,
+              controller: _regUsername,
               decoration: const InputDecoration(
-                labelText: 'Preferred name',
+                labelText: 'Username',
                 border: OutlineInputBorder(),
                 helperText: 'Maximum 50 characters',
               ),
@@ -183,9 +188,9 @@ class _AuthPageState extends State<AuthPage> {
               inputFormatters: [LengthLimitingTextInputFormatter(50)],
               validator: (val) {
                 if (val == null || val.trim().isEmpty)
-                  return 'Preferred name is required';
+                  return 'Username is required';
                 if (val.trim().length > 50)
-                  return 'Name must be 50 characters or fewer';
+                  return 'Username must be 50 characters or fewer';
                 return null;
               },
             ),
@@ -202,6 +207,19 @@ class _AuthPageState extends State<AuthPage> {
                   return 'Email is required';
                 if (!_isValidEmail(val.trim()))
                   return 'Enter a valid email address';
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _regUpNumber,
+              decoration: const InputDecoration(
+                labelText: 'UP number',
+                border: OutlineInputBorder(),
+              ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty)
+                  return 'UP number is required';
                 return null;
               },
             ),
@@ -242,9 +260,11 @@ class _AuthPageState extends State<AuthPage> {
 
                       setState(() => _isLoading = true);
                       final result = await _authService.register(
-                        name: _regName.text.trim(),
+                        username: _regUsername.text.trim(),
                         email: _regEmail.text.trim(),
+                        upNumber: _regUpNumber.text.trim(),
                         password: _regPassword.text,
+                        passwordConfirmation: _regConfirm.text,
                       );
                       setState(() => _isLoading = false);
 
@@ -278,13 +298,12 @@ class _AuthPageState extends State<AuthPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
-          isLoggedIn
-              ? 'Account'
-              : (_showSignUp ? 'Sign Up' : 'Login'),
+          isLoggedIn ? 'Account' : (_showSignUp ? 'Sign Up' : 'Login'),
         ),
       ),
-      body:
-          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
+      body: isLoggedIn
+          ? _buildLoggedInView()
+          : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }
