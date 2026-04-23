@@ -21,6 +21,10 @@ class UnifyApp extends StatelessWidget {
           primary: const Color(0xFF003087), // UoP Blue
           secondary: const Color(0xFF7B2D8E), // UoP Purple
         ),
+        appBarTheme: const AppBarTheme(
+          foregroundColor: Colors.white,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
         useMaterial3: true,
       ),
       home: const HomePage(),
