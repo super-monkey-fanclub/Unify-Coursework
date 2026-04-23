@@ -27,6 +27,13 @@ from core.views import (
     react_review_view,
     admin_delete_review_view,
     admin_respond_review_view,
+    society_polls_view,
+    create_society_poll_view,
+    create_society_info_view,
+    edit_society_poll_view,
+    delete_society_poll_view,
+    delete_society_info_view,
+    vote_society_poll_view,
 )
 
 
@@ -44,4 +51,12 @@ urlpatterns = [
     path("api/societies/reviews/react/", react_review_view, name="api-react-review"),
     path("api/societies/reviews/delete/", admin_delete_review_view, name="api-delete-review"),
     path("api/societies/reviews/respond/", admin_respond_review_view, name="api-respond-review"),
+    # Polls
+    path("api/societies/polls/", society_polls_view, name="api-society-polls"),
+    path("api/societies/polls/create/", create_society_poll_view, name="api-create-society-poll"),
+    path("api/societies/polls/edit/", edit_society_poll_view, name="api-edit-society-poll"),
+    path("api/societies/polls/delete/", delete_society_poll_view, name="api-delete-society-poll"),
+    path("api/societies/polls/info/create/", create_society_info_view, name="api-create-society-info"),
+    path("api/societies/polls/info/delete/", delete_society_info_view, name="api-delete-society-info"),
+    path("api/societies/polls/vote/", vote_society_poll_view, name="api-vote-society-poll"),
 ]

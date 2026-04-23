@@ -1207,6 +1207,27 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
+  void _openNotificationsPage() {
+    if (!_joined) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Join this society to view Events & Polls.'),
+        ),
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SocietyNotificationsPage(
+          societyName: widget.name,
+          societyIcon: widget.icon,
+          userEmail: widget.userEmail,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1299,6 +1320,12 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                           : Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _joined ? _openNotificationsPage : null,
+                    icon: const Icon(Icons.notifications_active_outlined),
+                    label: const Text('Events & Polls'),
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -1614,6 +1641,866 @@ class _DetailStat extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class SocietyNotificationsPage extends StatefulWidget {
+  final String societyName;
+  final IconData societyIcon;
+  final String? userEmail;
+
+  const SocietyNotificationsPage({
+    super.key,
+    required this.societyName,
+    required this.societyIcon,
+    this.userEmail,
+  });
+
+  @override
+  State<SocietyNotificationsPage> createState() =>
+      _SocietyNotificationsPageState();
+}
+
+class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
+  final SocietyService _societyService = SocietyService();
+
+  bool _loading = true;
+  bool _canCreatePoll = false;
+  bool _canCreateInfo = false;
+  List<_SocietyPoll> _polls = [];
+  List<_SocietyInfo> _infoItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPolls();
+  }
+
+  Future<void> _loadPolls() async {
+    setState(() {
+      _loading = true;
+    });
+
+    final result = await _societyService.getPolls(
+      societyName: widget.societyName,
+      viewerEmail: widget.userEmail,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final List<dynamic> raw = result['polls'] as List<dynamic>? ?? [];
+      final List<dynamic> rawInfo = result['info_items'] as List<dynamic>? ?? [];
+      setState(() {
+        _polls = raw
+            .map((item) => item as Map<String, dynamic>)
+            .map(_SocietyPoll.fromJson)
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        _infoItems = rawInfo
+            .map((item) => item as Map<String, dynamic>)
+            .map(_SocietyInfo.fromJson)
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        _canCreatePoll = result['can_create_poll'] == true;
+        _canCreateInfo = result['can_create_info'] == true;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Could not load polls.'),
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _voteOnPoll(_SocietyPoll poll, _SocietyPollOption option) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in before voting.')),
+      );
+      return;
+    }
+
+    if (poll.viewerVoteOptionId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You can only vote once per poll.')),
+      );
+      return;
+    }
+
+    final result = await _societyService.votePoll(
+      email: email,
+      pollId: poll.id,
+      optionId: option.id,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Vote recorded.'),
+        ),
+      );
+      await _loadPolls();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Could not vote on poll.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showCreatePollDialog() async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in as an admin to create polls.')),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final optionsController = TextEditingController();
+    final durationController = TextEditingController(text: '60');
+
+    final bool? submit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create poll'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Poll title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: optionsController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Options (one per line)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: durationController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Time limit in minutes',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (submit != true) {
+      titleController.dispose();
+      descriptionController.dispose();
+      optionsController.dispose();
+      durationController.dispose();
+      return;
+    }
+
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
+    final options = optionsController.text
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    final durationMinutes = int.tryParse(durationController.text.trim());
+
+    titleController.dispose();
+    descriptionController.dispose();
+    optionsController.dispose();
+    durationController.dispose();
+
+    if (title.isEmpty || options.length < 2 || durationMinutes == null || durationMinutes < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter title, at least 2 options, and a valid time limit.'),
+        ),
+      );
+      return;
+    }
+
+    final result = await _societyService.createPoll(
+      adminEmail: email,
+      societyName: widget.societyName,
+      title: title,
+      description: description,
+      options: options,
+      durationMinutes: durationMinutes,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Poll created.'),
+        ),
+      );
+      await _loadPolls();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Could not create poll.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showCreateInfoDialog() async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in as an admin to add information.')),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+
+    final bool? submit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add information'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Title (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: contentController,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: 'Information',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Post'),
+          ),
+        ],
+      ),
+    );
+
+    if (submit != true) {
+      titleController.dispose();
+      contentController.dispose();
+      return;
+    }
+
+    final title = titleController.text.trim();
+    final content = contentController.text.trim();
+
+    titleController.dispose();
+    contentController.dispose();
+
+    if (content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter information text before posting.')),
+      );
+      return;
+    }
+
+    final result = await _societyService.createInfo(
+      adminEmail: email,
+      societyName: widget.societyName,
+      title: title,
+      content: content,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Information posted.'),
+        ),
+      );
+      await _loadPolls();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Could not post information.'),
+        ),
+      );
+    }
+  }
+
+  String _timestampLabel(DateTime timestamp) {
+    final local = timestamp.toLocal();
+    final dd = local.day.toString().padLeft(2, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    final yy = (local.year % 100).toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$dd/$mm/$yy\n$hh:$min';
+  }
+
+  Future<void> _showAddOptionDialog(_SocietyPoll poll) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    final controller = TextEditingController();
+    final String? optionText = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add poll option'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Option text',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (optionText == null || optionText.isEmpty) return;
+
+    final result = await _societyService.editPoll(
+      adminEmail: email,
+      pollId: poll.id,
+      action: 'add_option',
+      optionText: optionText,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['message']?.toString() ?? 'Poll updated.')),
+    );
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
+  }
+
+  Future<void> _showDeleteOptionDialog(_SocietyPoll poll) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    if (poll.options.length <= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Poll must keep at least 2 options.')),
+      );
+      return;
+    }
+
+    final int? optionId = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Delete which option?'),
+        children: poll.options
+            .map(
+              (option) => SimpleDialogOption(
+                onPressed: () => Navigator.of(context).pop(option.id),
+                child: Text('${option.text} (${option.votes})'),
+              ),
+            )
+            .toList(),
+      ),
+    );
+
+    if (optionId == null) return;
+
+    final result = await _societyService.editPoll(
+      adminEmail: email,
+      pollId: poll.id,
+      action: 'delete_option',
+      optionId: optionId,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['message']?.toString() ?? 'Poll updated.')),
+    );
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
+  }
+
+  Future<void> _deletePoll(_SocietyPoll poll) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete poll?'),
+        content: const Text('This will permanently delete this poll.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final result = await _societyService.deletePoll(
+      adminEmail: email,
+      pollId: poll.id,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['message']?.toString() ?? 'Poll deleted.')),
+    );
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
+  }
+
+  Future<void> _deleteInfo(_SocietyInfo info) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text('This will permanently delete this message.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final result = await _societyService.deleteInfo(
+      adminEmail: email,
+      infoId: info.id,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['message']?.toString() ?? 'Message deleted.')),
+    );
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.societyName} Events & Polls'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        actions: [
+          if (_canCreateInfo)
+            IconButton(
+              tooltip: 'Add information',
+              onPressed: _showCreateInfoDialog,
+              icon: const Icon(Icons.post_add_outlined),
+            ),
+          if (_canCreatePoll)
+            IconButton(
+              tooltip: 'Create poll',
+              onPressed: _showCreatePollDialog,
+              icon: const Icon(Icons.add_chart_outlined),
+            ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadPolls,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      child: Icon(
+                        widget.societyIcon,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${widget.societyName} updates',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_infoItems.isEmpty && _polls.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    (_canCreatePoll || _canCreateInfo)
+                        ? 'No posts yet. Use the top buttons to add information or a poll.'
+                        : 'No posts available right now.',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ),
+              )
+            else
+              ..._polls.map(
+                (poll) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 74,
+                          child: Text(
+                            _timestampLabel(poll.createdAt),
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      poll.title,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  Chip(
+                                    visualDensity: VisualDensity.compact,
+                                    label: Text(poll.isOpen ? 'Poll Open' : 'Poll Closed'),
+                                  ),
+                                  if (_canCreatePoll)
+                                    PopupMenuButton<String>(
+                                      tooltip: 'Manage poll',
+                                      onSelected: (value) async {
+                                        if (value == 'add_option') {
+                                          await _showAddOptionDialog(poll);
+                                        } else if (value == 'delete_option') {
+                                          await _showDeleteOptionDialog(poll);
+                                        } else if (value == 'delete_poll') {
+                                          await _deletePoll(poll);
+                                        }
+                                      },
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem<String>(
+                                          value: 'add_option',
+                                          child: Text('Add option'),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'delete_option',
+                                          child: Text('Delete option'),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'delete_poll',
+                                          child: Text('Delete poll'),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                              if (poll.description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(poll.description),
+                              ],
+                              const SizedBox(height: 8),
+                              Text(
+                                'Total votes: ${poll.totalVotes}',
+                                style: TextStyle(color: Colors.grey.shade700),
+                              ),
+                              const SizedBox(height: 10),
+                              ...poll.options.map(
+                                (option) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: OutlinedButton.icon(
+                                    onPressed: (!poll.isOpen || poll.viewerVoteOptionId != null)
+                                        ? null
+                                        : () => _voteOnPoll(poll, option),
+                                    icon: Icon(
+                                      poll.viewerVoteOptionId == option.id
+                                          ? Icons.check_circle
+                                          : Icons.how_to_vote_outlined,
+                                    ),
+                                    label: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text('${option.text} (${option.votes})'),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (poll.viewerVoteOptionId != null)
+                                Text(
+                                  'Your vote has been recorded.',
+                                  style: TextStyle(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (_infoItems.isNotEmpty && _polls.isNotEmpty)
+              const SizedBox(height: 6),
+            ..._infoItems.map(
+                (info) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 74,
+                          child: Text(
+                            _timestampLabel(info.createdAt),
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      info.title.isEmpty ? 'Message' : info.title,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  const Chip(
+                                    visualDensity: VisualDensity.compact,
+                                    label: Text('Info'),
+                                  ),
+                                  if (_canCreateInfo)
+                                    IconButton(
+                                      tooltip: 'Delete message',
+                                      onPressed: () => _deleteInfo(info),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(info.content),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Posted by ${info.adminDisplayName}',
+                                style: TextStyle(color: Colors.grey.shade700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SocietyPoll {
+  final int id;
+  final String title;
+  final String description;
+  final DateTime createdAt;
+  final bool isOpen;
+  final int totalVotes;
+  final int? viewerVoteOptionId;
+  final List<_SocietyPollOption> options;
+
+  const _SocietyPoll({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.createdAt,
+    required this.isOpen,
+    required this.totalVotes,
+    required this.viewerVoteOptionId,
+    required this.options,
+  });
+
+  factory _SocietyPoll.fromJson(Map<String, dynamic> json) {
+    final rawOptions = json['options'] as List<dynamic>? ?? [];
+    return _SocietyPoll(
+      id: (json['id'] as int?) ?? 0,
+      title: (json['title'] as String?) ?? 'Untitled poll',
+      description: (json['description'] as String?) ?? '',
+        createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+          DateTime.now(),
+      isOpen: json['is_open'] == true,
+      totalVotes: (json['total_votes'] as int?) ?? 0,
+      viewerVoteOptionId: json['viewer_vote_option_id'] as int?,
+      options: rawOptions
+          .map((item) => item as Map<String, dynamic>)
+          .map(_SocietyPollOption.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class _SocietyPollOption {
+  final int id;
+  final String text;
+  final int votes;
+
+  const _SocietyPollOption({
+    required this.id,
+    required this.text,
+    required this.votes,
+  });
+
+  factory _SocietyPollOption.fromJson(Map<String, dynamic> json) {
+    return _SocietyPollOption(
+      id: (json['id'] as int?) ?? 0,
+      text: (json['text'] as String?) ?? '',
+      votes: (json['votes'] as int?) ?? 0,
+    );
+  }
+}
+
+class _SocietyInfo {
+  final int id;
+  final String title;
+  final String content;
+  final String adminDisplayName;
+  final DateTime createdAt;
+
+  const _SocietyInfo({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.adminDisplayName,
+    required this.createdAt,
+  });
+
+  factory _SocietyInfo.fromJson(Map<String, dynamic> json) {
+    return _SocietyInfo(
+      id: (json['id'] as int?) ?? 0,
+      title: (json['title'] as String?) ?? 'Information',
+      content: (json['content'] as String?) ?? '',
+      adminDisplayName: (json['admin_display_name'] as String?) ?? 'Admin',
+      createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+          DateTime.now(),
     );
   }
 }

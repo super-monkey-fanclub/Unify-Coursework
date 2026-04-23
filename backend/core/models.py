@@ -54,6 +54,7 @@ class Poll(models.Model):
     opens_at = models.DateTimeField()
     closes_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+    ended_posted_as_info = models.BooleanField(default=False)
 
 class PollOption(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
@@ -64,6 +65,17 @@ class PollVote(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     option = models.ForeignKey(PollOption, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class SocietyInfo(models.Model):
+    society = models.ForeignKey(Society, on_delete=models.CASCADE)
+    admin = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=200, blank=True, default='')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.society.name}: {self.title}"
 
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

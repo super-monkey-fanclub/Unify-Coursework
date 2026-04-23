@@ -7,6 +7,7 @@ from .models import (
     Poll,
     PollOption,
     PollVote,
+    SocietyInfo,
     Review,
     ReviewResponse,
     ReviewReaction
@@ -101,6 +102,7 @@ admin.site.register(Membership, MembershipAdmin)
 admin.site.register(Poll)
 admin.site.register(PollOption)
 admin.site.register(PollVote)
+admin.site.register(SocietyInfo)
 admin.site.register(Review)
 admin.site.register(ReviewResponse)
 admin.site.register(ReviewReaction, ReviewReactionAdmin)
