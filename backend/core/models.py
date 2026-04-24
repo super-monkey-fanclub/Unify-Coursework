@@ -3,8 +3,19 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
+    ACCOUNT_TYPE_CHOICES = (
+        ('regular', 'Regular User'),
+        ('society_admin', 'Society Admin'),
+        ('dev', 'Developer'),
+    )
+
     up_number = models.CharField(max_length=20, unique=True)
     opt_in_email = models.BooleanField(default=False)
+    account_type = models.CharField(
+        max_length=20,
+        choices=ACCOUNT_TYPE_CHOICES,
+        default='regular',
+    )
 
     def save(self, *args, **kwargs):
         """Auto-generate a unique UP number on first save if missing.

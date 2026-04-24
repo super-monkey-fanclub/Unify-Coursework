@@ -16,4 +16,6 @@ python manage.py runserver 0.0.0.0:8000
 cd "unify_frontend"
 flutter run -d chrome
 
+If you run the app on an Android emulator or a physical device, set the API host with `--dart-define=UNIFY_API_BASE_URL=http://<your-backend-host>:8000` so the Flutter client does not keep pointing at `127.0.0.1` on the device itself.
+
 maria - use ..\.venv\Scripts\activate.ps1

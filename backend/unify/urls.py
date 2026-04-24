@@ -14,6 +14,7 @@ from core.views import (
     admin_delete_review_view,
     admin_respond_review_view,
     society_polls_view,
+    society_poll_detail_view,
     create_society_poll_view,
     create_society_info_view,
     edit_society_poll_view,
@@ -41,6 +42,7 @@ urlpatterns = [
     path("api/societies/reviews/respond/", admin_respond_review_view, name="api-respond-review"),
     # Polls
     path("api/societies/polls/", society_polls_view, name="api-society-polls"),
+    path("api/societies/polls/detail/", society_poll_detail_view, name="api-society-poll-detail"),
     path("api/societies/polls/create/", create_society_poll_view, name="api-create-society-poll"),
     path("api/societies/polls/edit/", edit_society_poll_view, name="api-edit-society-poll"),
     path("api/societies/polls/delete/", delete_society_poll_view, name="api-delete-society-poll"),

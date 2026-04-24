@@ -2,9 +2,19 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
+
 /// Handles joining societies and managing memberships.
 class SocietyService {
-  static const String _baseUrl = 'http://127.0.0.1:8000/api/societies';
+  static String get _baseUrl => '${ApiConfig.baseUrl}/api/societies';
+
+  Map<String, dynamic> _connectionError(Object error) {
+    return {
+      'success': false,
+      'message':
+          'Could not connect to the server. (${error.runtimeType}: $error)',
+    };
+  }
 
   /// Join a society for the given user email.
   /// Returns a map with 'success' and 'message'.
@@ -35,8 +45,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not join society.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -67,8 +77,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load societies.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -114,14 +124,17 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load reviews.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
   /// Fetch members for a society.
   /// Returns a map with 'success' and on success 'members' as List<Map>.
-  Future<Map<String, dynamic>> getMembers({required String societyName, String? viewerEmail}) async {
+  Future<Map<String, dynamic>> getMembers({
+    required String societyName,
+    String? viewerEmail,
+  }) async {
     try {
       final response = await http
           .post(
@@ -129,21 +142,30 @@ class SocietyService {
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'society_name': societyName,
-              if (viewerEmail != null && viewerEmail.isNotEmpty) 'viewer_email': viewerEmail,
+              if (viewerEmail != null && viewerEmail.isNotEmpty)
+                'viewer_email': viewerEmail,
             }),
           )
           .timeout(const Duration(seconds: 10));
 
-      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+      final Map<String, dynamic> body =
+          jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200) {
         final List<dynamic> raw = body['members'] as List<dynamic>? ?? [];
-        return {'success': true, 'members': raw.cast<Map<String, dynamic>>(), 'viewer_is_admin': body['viewer_is_admin'] == true };
+        return {
+          'success': true,
+          'members': raw.cast<Map<String, dynamic>>(),
+          'viewer_is_admin': body['viewer_is_admin'] == true,
+        };
       }
 
-      return {'success': false, 'message': body['error'] ?? 'Could not load members.'};
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Could not load members.',
+      };
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -165,15 +187,19 @@ class SocietyService {
           )
           .timeout(const Duration(seconds: 10));
 
-      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+      final Map<String, dynamic> body =
+          jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200) {
         return {'success': true, 'message': body['message']};
       }
 
-      return {'success': false, 'message': body['error'] ?? 'Could not promote member.'};
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Could not promote member.',
+      };
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -213,8 +239,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not submit review.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -254,8 +280,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not react to review.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -290,8 +316,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not delete review.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -329,8 +355,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not submit response.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -353,7 +379,8 @@ class SocietyService {
 
       if (response.statusCode == 200) {
         final List<dynamic> raw = body['polls'] as List<dynamic>? ?? [];
-        final List<dynamic> rawInfo = body['info_items'] as List<dynamic>? ?? [];
+        final List<dynamic> rawInfo =
+            body['info_items'] as List<dynamic>? ?? [];
         return {
           'success': true,
           'polls': raw.cast<Map<String, dynamic>>(),
@@ -369,8 +396,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load polls.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -414,8 +441,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not create poll.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -455,8 +482,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not post information.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -494,8 +521,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not vote on poll.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -543,8 +570,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not update poll.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -558,10 +585,7 @@ class SocietyService {
           .post(
             Uri.parse('$_baseUrl/polls/delete/'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'admin_email': adminEmail,
-              'poll_id': pollId,
-            }),
+            body: jsonEncode({'admin_email': adminEmail, 'poll_id': pollId}),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -569,18 +593,15 @@ class SocietyService {
           jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return {
-          'success': true,
-          'message': body['message'] ?? 'Poll deleted.',
-        };
+        return {'success': true, 'message': body['message'] ?? 'Poll deleted.'};
       }
 
       return {
         'success': false,
         'message': body['error'] ?? 'Could not delete poll.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -594,10 +615,7 @@ class SocietyService {
           .post(
             Uri.parse('$_baseUrl/polls/info/delete/'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'admin_email': adminEmail,
-              'info_id': infoId,
-            }),
+            body: jsonEncode({'admin_email': adminEmail, 'info_id': infoId}),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -615,8 +633,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not delete message.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 }

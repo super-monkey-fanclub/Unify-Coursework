@@ -2,10 +2,19 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
+
 /// Handles all communication with the Django authentication endpoints.
 class AuthService {
-  // Change this to your machine's local IP if testing on a physical device.
-  static const String _baseUrl = 'http://127.0.0.1:8000/api/auth';
+  static String get _baseUrl => '${ApiConfig.baseUrl}/api/auth';
+
+  Map<String, dynamic> _connectionError(Object error) {
+    return {
+      'success': false,
+      'message':
+          'Could not connect to the server. (${error.runtimeType}: $error)',
+    };
+  }
 
   /// Registers a new user.
   /// Returns a map with 'success' (bool), and either 'user' or 'message'.
@@ -37,8 +46,8 @@ class AuthService {
         'success': false,
         'message': body['error'] ?? 'Registration failed.',
       };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 
@@ -63,12 +72,9 @@ class AuthService {
       if (response.statusCode == 200) {
         return {'success': true, 'user': body['user']};
       }
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Login failed.',
-      };
-    } catch (_) {
-      return {'success': false, 'message': 'Could not connect to the server.'};
+      return {'success': false, 'message': body['error'] ?? 'Login failed.'};
+    } catch (error) {
+      return _connectionError(error);
     }
   }
 }

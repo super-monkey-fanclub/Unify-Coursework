@@ -243,7 +243,12 @@ def register_view(request: HttpRequest):
     if User.objects.filter(email=email).exists():
         return JsonResponse({'error': 'An account with that email already exists.'}, status=409)
 
-    user = User.objects.create_user(username=email, email=email, password=password)
+    user = User.objects.create_user(
+        username=email,
+        email=email,
+        password=password,
+        account_type='regular',
+    )
     user.first_name = name
     user.save()
 
@@ -849,6 +854,51 @@ def society_polls_view(request: HttpRequest):
     )
 
 
+def society_poll_detail_view(request: HttpRequest):
+    poll_id_raw = request.GET.get('poll_id')
+    viewer_email = _safe_text(request.GET.get('viewer_email')).lower()
+
+    if poll_id_raw is None:
+        return JsonResponse({'error': 'poll_id query parameter is required.'}, status=400)
+
+    try:
+        poll_id = int(poll_id_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'poll_id must be an integer.'}, status=400)
+
+    try:
+        poll = Poll.objects.select_related('society').get(id=poll_id)
+    except Poll.DoesNotExist:
+        return JsonResponse({'error': 'Poll not found.'}, status=404)
+
+    viewer = None
+    viewer_is_member = False
+    viewer_is_admin = False
+    if viewer_email:
+        try:
+            viewer = User.objects.get(email=viewer_email)
+        except User.DoesNotExist:
+            viewer = None
+
+    if viewer is not None:
+        viewer_is_member = Membership.objects.filter(user=viewer, society=poll.society).exists()
+        viewer_is_admin = _is_society_admin(viewer, poll.society)
+
+    return JsonResponse(
+        {
+            'poll': _serialize_poll(poll, viewer),
+            'society': {
+                'id': poll.society.id,
+                'name': poll.society.name,
+                'category': poll.society.category,
+            },
+            'viewer_is_member': viewer_is_member,
+            'viewer_is_admin': viewer_is_admin,
+        },
+        status=200,
+    )
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def create_society_info_view(request: HttpRequest):
@@ -927,8 +977,11 @@ def create_society_poll_view(request: HttpRequest):
         if isinstance(option, str) and _safe_text(option)
     ]
 
+    # The DB enforces unique option text per poll, so validate duplicates before insert.
+    options = list(dict.fromkeys(options))
+
     if len(options) < 2:
-        return JsonResponse({'error': 'At least 2 poll options are required.'}, status=400)
+        return JsonResponse({'error': 'At least 2 unique poll options are required.'}, status=400)
 
     try:
         admin_user = User.objects.get(email=admin_email)
