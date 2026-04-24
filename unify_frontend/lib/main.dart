@@ -593,19 +593,20 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 12),
               ],
-              Align(
-                alignment: Alignment.centerLeft,
+              Center(
                 child: ElevatedButton.icon(
                   onPressed: _openSocietiesPage,
-                  icon: const Icon(Icons.groups),
+                  icon: const Icon(Icons.groups, size: 20),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
+                    minimumSize: const Size(180, 42),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                   ),
                   label: const Text('Find societies'),
                 ),
