@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'services/society_service.dart';
@@ -2397,9 +2399,17 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                                           ?.copyWith(fontWeight: FontWeight.w700),
                                     ),
                                   ),
-                                  Chip(
-                                    visualDensity: VisualDensity.compact,
-                                    label: Text(poll.isOpen ? 'Poll Open' : 'Poll Closed'),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Chip(
+                                        visualDensity: VisualDensity.compact,
+                                        label: Text(poll.isOpen ? 'Poll Open' : 'Poll Closed'),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      if (poll.isOpen)
+                                        PollCountdown(closesAt: poll.closesAt),
+                                    ],
                                   ),
                                   if (_canCreatePoll)
                                     PopupMenuButton<String>(
@@ -2546,6 +2556,7 @@ class _SocietyPoll {
   final String title;
   final String description;
   final DateTime createdAt;
+  final DateTime closesAt;
   final bool isOpen;
   final int totalVotes;
   final int? viewerVoteOptionId;
@@ -2556,6 +2567,7 @@ class _SocietyPoll {
     required this.title,
     required this.description,
     required this.createdAt,
+    required this.closesAt,
     required this.isOpen,
     required this.totalVotes,
     required this.viewerVoteOptionId,
@@ -2568,8 +2580,9 @@ class _SocietyPoll {
       id: (json['id'] as int?) ?? 0,
       title: (json['title'] as String?) ?? 'Untitled poll',
       description: (json['description'] as String?) ?? '',
-        createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ??
-          DateTime.now(),
+            createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+              DateTime.now(),
+            closesAt: DateTime.tryParse((json['closes_at'] as String?) ?? '') ?? DateTime.now(),
       isOpen: json['is_open'] == true,
       totalVotes: (json['total_votes'] as int?) ?? 0,
       viewerVoteOptionId: json['viewer_vote_option_id'] as int?,
@@ -2577,6 +2590,66 @@ class _SocietyPoll {
           .map((item) => item as Map<String, dynamic>)
           .map(_SocietyPollOption.fromJson)
           .toList(),
+    );
+  }
+}
+
+class PollCountdown extends StatefulWidget {
+  final DateTime closesAt;
+
+  const PollCountdown({super.key, required this.closesAt});
+
+  @override
+  State<PollCountdown> createState() => _PollCountdownState();
+}
+
+class _PollCountdownState extends State<PollCountdown> {
+  late Duration _remaining;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateRemaining();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  void _updateRemaining() {
+    final now = DateTime.now().toUtc();
+    final closes = widget.closesAt.toUtc();
+    _remaining = closes.difference(now);
+    if (_remaining.isNegative) _remaining = Duration.zero;
+  }
+
+  void _tick() {
+    if (!mounted) return;
+    setState(() {
+      _updateRemaining();
+    });
+    if (_remaining == Duration.zero) {
+      _timer?.cancel();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    if (d.inDays > 0) return '${d.inDays}d ${d.inHours.remainder(24)}h';
+    if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '${mm}:${ss}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      _remaining == Duration.zero ? 'Ended' : 'Ends in ${_format(_remaining)}',
+      style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
     );
   }
 }
