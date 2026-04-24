@@ -371,6 +371,8 @@ def society_members_view(request: HttpRequest):
     data = _json_body(request)
     society_name = _safe_text(data.get('society_name'))
 
+    viewer_email = _safe_text(data.get('viewer_email')).lower()
+
     if not society_name:
         return JsonResponse({'error': 'society_name is required.'}, status=400)
 
@@ -385,17 +387,66 @@ def society_members_view(request: HttpRequest):
         .order_by('user__up_number')
     )
 
+    # Determine whether the requesting viewer is an admin of this society
+    viewer = None
+    viewer_is_admin = False
+    if viewer_email:
+        try:
+            viewer = User.objects.get(email=viewer_email)
+            viewer_is_admin = _is_society_admin(viewer, society)
+        except User.DoesNotExist:
+            viewer = None
+
     members = [
         {
             'id': m.user.id,
             'up_number': m.user.up_number,
             'email': m.user.email,
             'display_name': _author_display_name(m.user),
+            'role': m.role,
         }
         for m in memberships
     ]
 
-    return JsonResponse({'members': members}, status=200)
+    return JsonResponse({'members': members, 'viewer_is_admin': viewer_is_admin}, status=200)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def promote_member_view(request: HttpRequest):
+    data = _json_body(request)
+    admin_email = _safe_text(data.get('admin_email')).lower()
+    society_name = _safe_text(data.get('society_name'))
+    member_id = data.get('member_id')
+
+    if not admin_email or not society_name or not member_id:
+        return JsonResponse({'error': 'admin_email, society_name and member_id are required.'}, status=400)
+
+    try:
+        admin_user = User.objects.get(email=admin_email)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Admin user not found.'}, status=404)
+
+    try:
+        society = Society.objects.get(name=society_name)
+    except Society.DoesNotExist:
+        return JsonResponse({'error': 'Society not found.'}, status=404)
+
+    if not _is_society_admin(admin_user, society):
+        return JsonResponse({'error': 'You are not a society admin.'}, status=403)
+
+    try:
+        membership = Membership.objects.get(user_id=int(member_id), society=society)
+    except (Membership.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Membership not found for that user.'}, status=404)
+
+    if membership.role == 'admin':
+        return JsonResponse({'message': 'Member is already an admin.'}, status=200)
+
+    membership.role = 'admin'
+    membership.save(update_fields=['role'])
+
+    return JsonResponse({'message': 'Member promoted to admin.'}, status=200)
 
 
 @csrf_exempt

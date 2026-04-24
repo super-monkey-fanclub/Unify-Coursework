@@ -662,8 +662,9 @@ class _MetaPill extends StatelessWidget {
 
 class MembersPage extends StatefulWidget {
   final String societyName;
+  final String? userEmail;
 
-  const MembersPage({super.key, required this.societyName});
+  const MembersPage({super.key, required this.societyName, this.userEmail});
 
   @override
   State<MembersPage> createState() => _MembersPageState();
@@ -673,6 +674,7 @@ class _MembersPageState extends State<MembersPage> {
   final SocietyService _societyService = SocietyService();
   bool _loading = true;
   List<Map<String, dynamic>> _members = [];
+  bool _viewerIsAdmin = false;
 
   @override
   void initState() {
@@ -682,11 +684,12 @@ class _MembersPageState extends State<MembersPage> {
 
   Future<void> _loadMembers() async {
     setState(() => _loading = true);
-    final res = await _societyService.getMembers(societyName: widget.societyName);
+    final res = await _societyService.getMembers(societyName: widget.societyName, viewerEmail: widget.userEmail);
     if (!mounted) return;
     if (res['success'] == true) {
       setState(() {
         _members = (res['members'] as List<dynamic>).cast<Map<String, dynamic>>();
+        _viewerIsAdmin = res['viewer_is_admin'] == true;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -713,10 +716,49 @@ class _MembersPageState extends State<MembersPage> {
                   separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (context, index) {
                     final m = _members[index];
+                    final isAdminMember = (m['role'] ?? '') == 'admin';
                     return ListTile(
                       leading: CircleAvatar(child: Text((m['up_number'] ?? '?').toString())),
                       title: Text((m['display_name'] ?? m['email'] ?? '').toString()),
                       subtitle: Text('UP: ${m['up_number'] ?? ''}'),
+                      trailing: _viewerIsAdmin && !isAdminMember
+                          ? TextButton(
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Make admin?'),
+                                    content: Text('Promote ${m['display_name'] ?? m['email']} to admin?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                                      FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirm')),
+                                    ],
+                                  ),
+                                );
+                                if (confirm != true) return;
+                                final adminEmail = widget.userEmail ?? '';
+                                final memberId = (m['id'] as int?);
+                                if (memberId == null) return;
+                                final res = await _societyService.promoteMember(
+                                  adminEmail: adminEmail,
+                                  societyName: widget.societyName,
+                                  memberId: memberId,
+                                );
+                                if (!mounted) return;
+                                if (res['success'] == true) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(res['message']?.toString() ?? 'Promoted.')),
+                                  );
+                                  await _loadMembers();
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(res['message']?.toString() ?? 'Could not promote.')),
+                                  );
+                                }
+                              },
+                              child: const Text('Make admin'),
+                            )
+                          : (isAdminMember ? const Text('Admin') : null),
                     );
                   },
                 ),
@@ -1297,6 +1339,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       MaterialPageRoute(
         builder: (_) => MembersPage(
           societyName: widget.name,
+          userEmail: widget.userEmail,
         ),
       ),
     );

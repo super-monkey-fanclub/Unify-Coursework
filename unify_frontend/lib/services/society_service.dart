@@ -121,13 +121,16 @@ class SocietyService {
 
   /// Fetch members for a society.
   /// Returns a map with 'success' and on success 'members' as List<Map>.
-  Future<Map<String, dynamic>> getMembers({required String societyName}) async {
+  Future<Map<String, dynamic>> getMembers({required String societyName, String? viewerEmail}) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/members/'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'society_name': societyName}),
+            body: jsonEncode({
+              'society_name': societyName,
+              if (viewerEmail != null && viewerEmail.isNotEmpty) 'viewer_email': viewerEmail,
+            }),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -135,10 +138,40 @@ class SocietyService {
 
       if (response.statusCode == 200) {
         final List<dynamic> raw = body['members'] as List<dynamic>? ?? [];
-        return {'success': true, 'members': raw.cast<Map<String, dynamic>>() };
+        return {'success': true, 'members': raw.cast<Map<String, dynamic>>(), 'viewer_is_admin': body['viewer_is_admin'] == true };
       }
 
       return {'success': false, 'message': body['error'] ?? 'Could not load members.'};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
+    }
+  }
+
+  Future<Map<String, dynamic>> promoteMember({
+    required String adminEmail,
+    required String societyName,
+    required int memberId,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/members/promote/'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'admin_email': adminEmail,
+              'society_name': societyName,
+              'member_id': memberId,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': body['message']};
+      }
+
+      return {'success': false, 'message': body['error'] ?? 'Could not promote member.'};
     } catch (_) {
       return {'success': false, 'message': 'Could not connect to the server.'};
     }
