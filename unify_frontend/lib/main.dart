@@ -752,7 +752,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
-
+  bool _hovering = false;
   List<Society> get _societies => widget.societies;
 
   void _openSocietyDetails(Society society) {
@@ -801,47 +801,118 @@ class _HeroCarouselState extends State<HeroCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            itemCount: _societies.length,
-            itemBuilder: (context, index) {
-              final society = _societies[index];
-              return SocietyCard(
-                society: society,
-                onTap: () => _openSocietyDetails(society),
-              );
-            },
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+    final bool showArrows = !_hovering ? false : !isMobile;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              itemCount: _societies.length,
+              itemBuilder: (context, index) {
+                final society = _societies[index];
+                return SocietyCard(
+                  society: society,
+                  onTap: () => _openSocietyDetails(society),
+                );
+              },
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _societies.length,
-              (index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentPage == index
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade300,
+
+          // Left arrow (centered to carousel)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: AnimatedOpacity(
+                opacity: showArrows ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Material(
+                  color: Colors.black.withOpacity(0.35),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    color: Colors.white,
+                    icon: const Icon(Icons.arrow_back_ios_new),
+                    onPressed: () {
+                      final target = (_currentPage - 1).clamp(0, _societies.length - 1);
+                      _pageController.animateToPage(
+                        target,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+
+          // Right arrow (centered to carousel)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: AnimatedOpacity(
+                opacity: showArrows ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Material(
+                  color: Colors.black.withOpacity(0.35),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    color: Colors.white,
+                    icon: const Icon(Icons.arrow_forward_ios),
+                    onPressed: () {
+                      final target = (_currentPage + 1).clamp(0, _societies.length - 1);
+                      _pageController.animateToPage(
+                        target,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Page indicators at bottom
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 12,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _societies.length,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentPage == index
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.shade300,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
