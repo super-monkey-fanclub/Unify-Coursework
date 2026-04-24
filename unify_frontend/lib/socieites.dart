@@ -660,6 +660,70 @@ class _MetaPill extends StatelessWidget {
   }
 }
 
+class MembersPage extends StatefulWidget {
+  final String societyName;
+
+  const MembersPage({super.key, required this.societyName});
+
+  @override
+  State<MembersPage> createState() => _MembersPageState();
+}
+
+class _MembersPageState extends State<MembersPage> {
+  final SocietyService _societyService = SocietyService();
+  bool _loading = true;
+  List<Map<String, dynamic>> _members = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    setState(() => _loading = true);
+    final res = await _societyService.getMembers(societyName: widget.societyName);
+    if (!mounted) return;
+    if (res['success'] == true) {
+      setState(() {
+        _members = (res['members'] as List<dynamic>).cast<Map<String, dynamic>>();
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message']?.toString() ?? 'Could not load members.')),
+      );
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Members — ${widget.societyName}'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _members.isEmpty
+              ? Center(child: Text('No members found.'))
+              : ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _members.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final m = _members[index];
+                    return ListTile(
+                      leading: CircleAvatar(child: Text((m['up_number'] ?? '?').toString())),
+                      title: Text((m['display_name'] ?? m['email'] ?? '').toString()),
+                      subtitle: Text('UP: ${m['up_number'] ?? ''}'),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
 class _EmptySocietyState extends StatelessWidget {
   final VoidCallback onReset;
 
@@ -1228,6 +1292,16 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     );
   }
 
+  void _openMembersPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MembersPage(
+          societyName: widget.name,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1326,6 +1400,12 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                     onPressed: _joined ? _openNotificationsPage : null,
                     icon: const Icon(Icons.notifications_active_outlined),
                     label: const Text('Events & Polls'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _openMembersPage,
+                    icon: const Icon(Icons.group),
+                    label: const Text('Members'),
                   ),
                   const SizedBox(height: 24),
                   Text(

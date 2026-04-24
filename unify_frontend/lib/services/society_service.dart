@@ -119,6 +119,31 @@ class SocietyService {
     }
   }
 
+  /// Fetch members for a society.
+  /// Returns a map with 'success' and on success 'members' as List<Map>.
+  Future<Map<String, dynamic>> getMembers({required String societyName}) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/members/'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'society_name': societyName}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final List<dynamic> raw = body['members'] as List<dynamic>? ?? [];
+        return {'success': true, 'members': raw.cast<Map<String, dynamic>>() };
+      }
+
+      return {'success': false, 'message': body['error'] ?? 'Could not load members.'};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
+    }
+  }
+
   /// Submit a review for a society by a given user.
   /// Returns a map with 'success' and 'message'.
   Future<Map<String, dynamic>> submitReview({

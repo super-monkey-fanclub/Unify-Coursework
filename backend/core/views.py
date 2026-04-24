@@ -366,6 +366,39 @@ def my_societies_view(request: HttpRequest):
 
 
 @csrf_exempt
+@require_http_methods(['POST'])
+def society_members_view(request: HttpRequest):
+    data = _json_body(request)
+    society_name = _safe_text(data.get('society_name'))
+
+    if not society_name:
+        return JsonResponse({'error': 'society_name is required.'}, status=400)
+
+    try:
+        society = Society.objects.get(name=society_name)
+    except Society.DoesNotExist:
+        return JsonResponse({'error': 'Society not found.'}, status=404)
+
+    memberships = (
+        Membership.objects.select_related('user')
+        .filter(society=society)
+        .order_by('user__up_number')
+    )
+
+    members = [
+        {
+            'id': m.user.id,
+            'up_number': m.user.up_number,
+            'email': m.user.email,
+            'display_name': _author_display_name(m.user),
+        }
+        for m in memberships
+    ]
+
+    return JsonResponse({'members': members}, status=200)
+
+
+@csrf_exempt
 @require_http_methods(['GET'])
 def society_reviews_view(request: HttpRequest):
     society_name = _safe_text(request.GET.get('society'))

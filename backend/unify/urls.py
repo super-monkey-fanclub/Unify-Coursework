@@ -20,6 +20,7 @@ from django.urls import path
 from core.views import (
     register_view,
     login_view,
+    society_members_view,
     join_society_view,
     my_societies_view,
     society_reviews_view,
@@ -45,6 +46,7 @@ urlpatterns = [
     # Societies/memberships
     path("api/societies/join/", join_society_view, name="api-join-society"),
     path("api/societies/my/", my_societies_view, name="api-my-societies"),
+    path("api/societies/members/", society_members_view, name="api-society-members"),
     # Reviews
     path("api/societies/reviews/", society_reviews_view, name="api-society-reviews"),
     path("api/societies/reviews/add/", add_review_view, name="api-add-review"),
