@@ -381,7 +381,7 @@ class SocietyService {
     required String title,
     required String description,
     required List<String> options,
-    required int durationMinutes,
+    required int durationHours,
   }) async {
     try {
       final response = await http
@@ -394,7 +394,7 @@ class SocietyService {
               'title': title,
               'description': description,
               'options': options,
-              'duration_minutes': durationMinutes,
+              'duration_hours': durationHours,
             }),
           )
           .timeout(const Duration(seconds: 10));

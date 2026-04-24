@@ -902,21 +902,21 @@ def create_society_poll_view(request: HttpRequest):
     title = _safe_text(data.get('title'))
     description = _safe_text(data.get('description'))
     options_raw = data.get('options')
-    duration_minutes_raw = data.get('duration_minutes')
+    duration_hours_raw = data.get('duration_hours')
 
-    if not admin_email or not society_name or not title or duration_minutes_raw is None:
+    if not admin_email or not society_name or not title or duration_hours_raw is None:
         return JsonResponse(
-            {'error': 'admin_email, society_name, title and duration_minutes are required.'},
+            {'error': 'admin_email, society_name, title and duration_hours are required.'},
             status=400,
         )
 
     try:
-        duration_minutes = int(duration_minutes_raw)
+        duration_hours = int(duration_hours_raw)
     except (TypeError, ValueError):
-        return JsonResponse({'error': 'duration_minutes must be an integer.'}, status=400)
+        return JsonResponse({'error': 'duration_hours must be an integer.'}, status=400)
 
-    if duration_minutes < 1:
-        return JsonResponse({'error': 'duration_minutes must be at least 1.'}, status=400)
+    if duration_hours < 1:
+        return JsonResponse({'error': 'duration_hours must be at least 1.'}, status=400)
 
     if not isinstance(options_raw, list):
         return JsonResponse({'error': 'options must be a list.'}, status=400)
@@ -944,7 +944,7 @@ def create_society_poll_view(request: HttpRequest):
         return JsonResponse({'error': 'Only society admins can create polls.'}, status=403)
 
     opens_at = timezone.now()
-    closes_at = opens_at + timedelta(minutes=duration_minutes)
+    closes_at = opens_at + timedelta(hours=duration_hours)
 
     poll = Poll.objects.create(
         society=society,

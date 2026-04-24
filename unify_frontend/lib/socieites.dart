@@ -1936,7 +1936,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                 controller: durationController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Time limit in minutes',
+                  labelText: 'Time limit in hours',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -1971,14 +1971,14 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .toList();
-    final durationMinutes = int.tryParse(durationController.text.trim());
+    final durationHours = int.tryParse(durationController.text.trim());
 
     titleController.dispose();
     descriptionController.dispose();
     optionsController.dispose();
     durationController.dispose();
 
-    if (title.isEmpty || options.length < 2 || durationMinutes == null || durationMinutes < 1) {
+    if (title.isEmpty || options.length < 2 || durationHours == null || durationHours < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Enter title, at least 2 options, and a valid time limit.'),
@@ -1993,7 +1993,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       title: title,
       description: description,
       options: options,
-      durationMinutes: durationMinutes,
+      durationHours: durationHours,
     );
 
     if (!mounted) return;
