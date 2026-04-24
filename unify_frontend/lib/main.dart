@@ -623,7 +623,19 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(color: Colors.grey.shade700),
               ),
               const SizedBox(height: 10),
-              const SizedBox(height: 350, child: HeroCarousel()),
+              SizedBox(
+                height: 350,
+                child: HeroCarousel(
+                  societies: _allSocieties,
+                  userEmail: _currentUser != null ? (_currentUser!['email'] as String?) : null,
+                ),
+              ),
+              const SizedBox(height: 18),
+              ReviewsSection(
+                societies: _allSocieties,
+                userEmail: _currentUser != null ? (_currentUser!['email'] as String?) : null,
+              ),
+              const SizedBox(height: 18),
               const SizedBox(height: 18),
             ],
           ),
@@ -727,7 +739,10 @@ class _HeaderStatChip extends StatelessWidget {
 }
 
 class HeroCarousel extends StatefulWidget {
-  const HeroCarousel({super.key});
+  final List<Society> societies;
+  final String? userEmail;
+
+  const HeroCarousel({super.key, required this.societies, this.userEmail});
 
   @override
   State<HeroCarousel> createState() => _HeroCarouselState();
@@ -738,36 +753,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
   int _currentPage = 0;
   Timer? _timer;
 
-  final List<Society> _societies = [
-    Society(
-      name: 'Art Society',
-      description:
-          'A friendly society for drawing, painting, and creative workshops.',
-      icon: Icons.palette,
-      memberCount: 82,
-      rating: 4.8,
-      imageUrl:
-          'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Anime Society',
-      description: 'Weekly anime screenings and socials for all fans.',
-      icon: Icons.tv,
-      memberCount: 101,
-      rating: 4.7,
-      imageUrl:
-          'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Gaming Society',
-      description: 'Casual and competitive gaming events across many genres.',
-      icon: Icons.sports_esports,
-      memberCount: 174,
-      rating: 4.9,
-      imageUrl:
-          'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
-    ),
-  ];
+  List<Society> get _societies => widget.societies;
 
   void _openSocietyDetails(Society society) {
     Navigator.of(context).push(
@@ -779,6 +765,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
           icon: society.icon,
           initialMemberCount: society.memberCount,
           initialAverageRating: society.rating,
+          userEmail: widget.userEmail,
         ),
       ),
     );
@@ -943,6 +930,132 @@ class SocietyCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class ReviewsSection extends StatefulWidget {
+  final List<Society> societies;
+  final String? userEmail;
+
+  const ReviewsSection({super.key, required this.societies, this.userEmail});
+
+  @override
+  State<ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<ReviewsSection> {
+  final SocietyService _service = SocietyService();
+  bool _loading = true;
+  List<Map<String, dynamic>> _reviews = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSampleReviews();
+  }
+
+  Future<void> _loadSampleReviews() async {
+    setState(() => _loading = true);
+    final List<Map<String, dynamic>> collected = [];
+
+    // pick up to 3 societies to show reviews for (spread across list)
+    final samples = <Society>[];
+    if (widget.societies.isEmpty) {
+      setState(() {
+        _reviews = [];
+        _loading = false;
+      });
+      return;
+    }
+
+    samples.add(widget.societies[0]);
+    if (widget.societies.length > 2) samples.add(widget.societies[2]);
+    if (widget.societies.length > 4) samples.add(widget.societies[4]);
+
+    for (final s in samples) {
+      final res = await _service.getReviews(societyName: s.name, viewerEmail: widget.userEmail);
+      if (res['success'] == true) {
+        final List<Map<String, dynamic>> revs = (res['reviews'] as List<dynamic>).cast<Map<String, dynamic>>();
+        for (final r in revs.take(2)) {
+          collected.add({...r, 'society_name': s.name, 'society_rating': s.rating});
+        }
+      }
+      if (collected.length >= 6) break;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _reviews = collected;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Community reviews',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _reviews.isEmpty
+                ? Text('No reviews available yet.', style: TextStyle(color: Colors.grey.shade700))
+                : SizedBox(
+                    height: 160,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(top: 8),
+                      itemCount: _reviews.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final r = _reviews[index];
+                        return SizedBox(
+                          width: 320,
+                          child: Card(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(r['society_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      Row(children: [const Icon(Icons.star, color: Colors.amber, size: 16), const SizedBox(width: 6), Text((r['rating'] ?? 0).toString())]),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Expanded(child: Text((r['comment'] ?? '').toString(), overflow: TextOverflow.ellipsis, maxLines: 4)),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('By ${r['author_display_name'] ?? r['author'] ?? 'User'}', style: TextStyle(color: Colors.grey.shade700)),
+                                      TextButton(
+                                        onPressed: () {
+                                          // navigate to society details
+                                          final society = widget.societies.firstWhere((s) => s.name == (r['society_name'] ?? ''), orElse: () => widget.societies.first);
+                                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocietyDetailsPage(name: society.name, description: society.description, imageUrl: society.imageUrl, icon: society.icon, initialMemberCount: society.memberCount, initialAverageRating: society.rating, userEmail: widget.userEmail)));
+                                        },
+                                        child: const Text('View'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+      ],
     );
   }
 }
