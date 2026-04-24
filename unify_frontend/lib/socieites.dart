@@ -59,8 +59,9 @@ class SocietySummary {
 
 class SocietiesPage extends StatefulWidget {
   final String? userEmail;
+  final String? userAuthToken;
 
-  const SocietiesPage({super.key, this.userEmail});
+  const SocietiesPage({super.key, this.userEmail, this.userAuthToken});
 
   @override
   State<SocietiesPage> createState() => _SocietiesPageState();
@@ -509,6 +510,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
                                   imageUrl: society.imageUrl,
                                   icon: society.icon,
                                   userEmail: widget.userEmail,
+                                  userAuthToken: widget.userAuthToken,
                                   initialJoined: society.joined,
                                   initialMemberCount: society.memberCount,
                                   initialAverageRating: society.averageRating,
@@ -686,16 +688,24 @@ class _MembersPageState extends State<MembersPage> {
 
   Future<void> _loadMembers() async {
     setState(() => _loading = true);
-    final res = await _societyService.getMembers(societyName: widget.societyName, viewerEmail: widget.userEmail);
+    final res = await _societyService.getMembers(
+      societyName: widget.societyName,
+      viewerEmail: widget.userEmail,
+    );
     if (!mounted) return;
     if (res['success'] == true) {
       setState(() {
-        _members = (res['members'] as List<dynamic>).cast<Map<String, dynamic>>();
+        _members = (res['members'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
         _viewerIsAdmin = res['viewer_is_admin'] == true;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message']?.toString() ?? 'Could not load members.')),
+        SnackBar(
+          content: Text(
+            res['message']?.toString() ?? 'Could not load members.',
+          ),
+        ),
       );
     }
     if (mounted) setState(() => _loading = false);
@@ -711,59 +721,82 @@ class _MembersPageState extends State<MembersPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _members.isEmpty
-              ? Center(child: Text('No members found.'))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: _members.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final m = _members[index];
-                    final isAdminMember = (m['role'] ?? '') == 'admin';
-                    return ListTile(
-                      leading: CircleAvatar(child: Text((m['up_number'] ?? '?').toString())),
-                      title: Text((m['display_name'] ?? m['email'] ?? '').toString()),
-                      subtitle: Text('UP: ${m['up_number'] ?? ''}'),
-                      trailing: _viewerIsAdmin && !isAdminMember
-                          ? TextButton(
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Make admin?'),
-                                    content: Text('Promote ${m['display_name'] ?? m['email']} to admin?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-                                      FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirm')),
-                                    ],
+          ? Center(child: Text('No members found.'))
+          : ListView.separated(
+              padding: const EdgeInsets.all(12),
+              itemCount: _members.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final m = _members[index];
+                final isAdminMember = (m['role'] ?? '') == 'admin';
+                return ListTile(
+                  leading: CircleAvatar(
+                    child: Text((m['up_number'] ?? '?').toString()),
+                  ),
+                  title: Text(
+                    (m['display_name'] ?? m['email'] ?? '').toString(),
+                  ),
+                  subtitle: Text('UP: ${m['up_number'] ?? ''}'),
+                  trailing: _viewerIsAdmin && !isAdminMember
+                      ? TextButton(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Make admin?'),
+                                content: Text(
+                                  'Promote ${m['display_name'] ?? m['email']} to admin?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
                                   ),
-                                );
-                                if (confirm != true) return;
-                                final adminEmail = widget.userEmail ?? '';
-                                final memberId = (m['id'] as int?);
-                                if (memberId == null) return;
-                                final res = await _societyService.promoteMember(
-                                  adminEmail: adminEmail,
-                                  societyName: widget.societyName,
-                                  memberId: memberId,
-                                );
-                                if (!mounted) return;
-                                if (res['success'] == true) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(res['message']?.toString() ?? 'Promoted.')),
-                                  );
-                                  await _loadMembers();
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(res['message']?.toString() ?? 'Could not promote.')),
-                                  );
-                                }
-                              },
-                              child: const Text('Make admin'),
-                            )
-                          : (isAdminMember ? const Text('Admin') : null),
-                    );
-                  },
-                ),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true),
+                                    child: const Text('Confirm'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm != true) return;
+                            final adminEmail = widget.userEmail ?? '';
+                            final memberId = (m['id'] as int?);
+                            if (memberId == null) return;
+                            final res = await _societyService.promoteMember(
+                              adminEmail: adminEmail,
+                              societyName: widget.societyName,
+                              memberId: memberId,
+                            );
+                            if (!mounted) return;
+                            if (res['success'] == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    res['message']?.toString() ?? 'Promoted.',
+                                  ),
+                                ),
+                              );
+                              await _loadMembers();
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    res['message']?.toString() ??
+                                        'Could not promote.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Make admin'),
+                        )
+                      : (isAdminMember ? const Text('Admin') : null),
+                );
+              },
+            ),
     );
   }
 }
@@ -870,6 +903,7 @@ class SocietyDetailsPage extends StatefulWidget {
   final String imageUrl;
   final IconData icon;
   final String? userEmail;
+  final String? userAuthToken;
   final bool initialJoined;
   final int initialMemberCount;
   final double initialAverageRating;
@@ -883,6 +917,7 @@ class SocietyDetailsPage extends StatefulWidget {
     required this.imageUrl,
     required this.icon,
     this.userEmail,
+    this.userAuthToken,
     this.initialJoined = false,
     this.initialMemberCount = 0,
     this.initialAverageRating = 0,
@@ -955,6 +990,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     final result = await _societyService.getReviews(
       societyName: widget.name,
       viewerEmail: widget.userEmail,
+      authToken: widget.userAuthToken,
       sort: switch (_reviewSort) {
         ReviewSortOption.latest => 'latest',
         ReviewSortOption.rating => 'rating',
@@ -1033,17 +1069,11 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       return;
     }
 
-    if (!review.canReact) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reaction already used for this review.')),
-      );
-      return;
-    }
-
     final result = await _societyService.reactToReview(
       email: email,
       reviewId: review.id,
       reactionType: reactionType,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1056,7 +1086,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
             likes: (result['likes'] as int?) ?? item.likes,
             dislikes: (result['dislikes'] as int?) ?? item.dislikes,
             userReaction: result['user_reaction']?.toString(),
-            canReact: false,
+            canReact: true,
           );
         }).toList();
       });
@@ -1098,6 +1128,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     final result = await _societyService.deleteReviewAsAdmin(
       adminEmail: email,
       reviewId: review.id,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1158,6 +1189,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       adminEmail: email,
       reviewId: review.id,
       responseText: responseText,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1285,6 +1317,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       societyName: widget.name,
       rating: _rating,
       comment: comment,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1331,6 +1364,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
           societyName: widget.name,
           societyIcon: widget.icon,
           userEmail: widget.userEmail,
+          userAuthToken: widget.userAuthToken,
         ),
       ),
     );
@@ -1339,10 +1373,8 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   void _openMembersPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MembersPage(
-          societyName: widget.name,
-          userEmail: widget.userEmail,
-        ),
+        builder: (_) =>
+            MembersPage(societyName: widget.name, userEmail: widget.userEmail),
       ),
     );
   }
@@ -1774,12 +1806,14 @@ class SocietyNotificationsPage extends StatefulWidget {
   final String societyName;
   final IconData societyIcon;
   final String? userEmail;
+  final String? userAuthToken;
 
   const SocietyNotificationsPage({
     super.key,
     required this.societyName,
     required this.societyIcon,
     this.userEmail,
+    this.userAuthToken,
   });
 
   @override
@@ -1810,31 +1844,37 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final result = await _societyService.getPolls(
       societyName: widget.societyName,
       viewerEmail: widget.userEmail,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
 
     if (result['success'] == true) {
       final List<dynamic> raw = result['polls'] as List<dynamic>? ?? [];
-      final List<dynamic> rawInfo = result['info_items'] as List<dynamic>? ?? [];
+      final List<dynamic> rawInfo =
+          result['info_items'] as List<dynamic>? ?? [];
       setState(() {
-        _polls = raw
-            .map((item) => item as Map<String, dynamic>)
-            .map(_SocietyPoll.fromJson)
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        _infoItems = rawInfo
-            .map((item) => item as Map<String, dynamic>)
-            .map(_SocietyInfo.fromJson)
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        _polls =
+            raw
+                .map((item) => item as Map<String, dynamic>)
+                .map(_SocietyPoll.fromJson)
+                .toList()
+              ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        _infoItems =
+            rawInfo
+                .map((item) => item as Map<String, dynamic>)
+                .map(_SocietyInfo.fromJson)
+                .toList()
+              ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
         _canCreatePoll = result['can_create_poll'] == true;
         _canCreateInfo = result['can_create_info'] == true;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']?.toString() ?? 'Could not load polls.'),
+          content: Text(
+            result['message']?.toString() ?? 'Could not load polls.',
+          ),
         ),
       );
     }
@@ -1866,6 +1906,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       email: email,
       pollId: poll.id,
       optionId: option.id,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1880,7 +1921,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']?.toString() ?? 'Could not vote on poll.'),
+          content: Text(
+            result['message']?.toString() ?? 'Could not vote on poll.',
+          ),
         ),
       );
     }
@@ -1890,7 +1933,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in as an admin to create polls.')),
+        const SnackBar(
+          content: Text('Please log in as an admin to create polls.'),
+        ),
       );
       return;
     }
@@ -1980,10 +2025,15 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     optionsController.dispose();
     durationController.dispose();
 
-    if (title.isEmpty || options.length < 2 || durationHours == null || durationHours < 1) {
+    if (title.isEmpty ||
+        options.length < 2 ||
+        durationHours == null ||
+        durationHours < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Enter title, at least 2 options, and a valid time limit.'),
+          content: Text(
+            'Enter title, at least 2 options, and a valid time limit.',
+          ),
         ),
       );
       return;
@@ -1996,6 +2046,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       description: description,
       options: options,
       durationHours: durationHours,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -2010,7 +2061,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']?.toString() ?? 'Could not create poll.'),
+          content: Text(
+            result['message']?.toString() ?? 'Could not create poll.',
+          ),
         ),
       );
     }
@@ -2020,7 +2073,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in as an admin to add information.')),
+        const SnackBar(
+          content: Text('Please log in as an admin to add information.'),
+        ),
       );
       return;
     }
@@ -2092,6 +2147,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       societyName: widget.societyName,
       title: title,
       content: content,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -2106,7 +2162,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']?.toString() ?? 'Could not post information.'),
+          content: Text(
+            result['message']?.toString() ?? 'Could not post information.',
+          ),
         ),
       );
     }
@@ -2120,6 +2178,107 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final hh = local.hour.toString().padLeft(2, '0');
     final min = local.minute.toString().padLeft(2, '0');
     return '$dd/$mm/$yy\n$hh:$min';
+  }
+
+  String _monthLabel(String monthKey) {
+    final parts = monthKey.split('-');
+    if (parts.length != 2) return monthKey;
+
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    if (year == null || month == null || month < 1 || month > 12) {
+      return monthKey;
+    }
+
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${names[month - 1]} $year';
+  }
+
+  Future<void> _showReviewAnalyticsDialog() async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in as an admin to view analytics.')),
+      );
+      return;
+    }
+
+    final result = await _societyService.getReviewAnalytics(
+      societyName: widget.societyName,
+      viewerEmail: email,
+      authToken: widget.userAuthToken,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ??
+                'Could not load review analytics.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final List<dynamic> raw = result['trends'] as List<dynamic>? ?? [];
+    final trends = raw
+        .map((item) => item as Map<String, dynamic>)
+        .map(_MonthlyReviewTrend.fromJson)
+        .toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Monthly Review Trends'),
+        content: SizedBox(
+          width: 420,
+          child: trends.isEmpty
+              ? const Text('No review data available yet for this society.')
+              : SingleChildScrollView(
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Month')),
+                      DataColumn(label: Text('Avg Rating')),
+                      DataColumn(label: Text('Reviews')),
+                    ],
+                    rows: trends
+                        .map(
+                          (trend) => DataRow(
+                            cells: [
+                              DataCell(Text(_monthLabel(trend.month))),
+                              DataCell(Text(trend.avgRating.toStringAsFixed(1))),
+                              DataCell(Text('${trend.reviewCount}')),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showAddOptionDialog(_SocietyPoll poll) async {
@@ -2159,6 +2318,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       pollId: poll.id,
       action: 'add_option',
       optionText: optionText,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -2204,6 +2364,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       pollId: poll.id,
       action: 'delete_option',
       optionId: optionId,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -2243,6 +2404,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final result = await _societyService.deletePoll(
       adminEmail: email,
       pollId: poll.id,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -2282,12 +2444,15 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final result = await _societyService.deleteInfo(
       adminEmail: email,
       infoId: info.id,
+      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result['message']?.toString() ?? 'Message deleted.')),
+      SnackBar(
+        content: Text(result['message']?.toString() ?? 'Message deleted.'),
+      ),
     );
     if (result['success'] == true) {
       await _loadPolls();
@@ -2301,6 +2466,12 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
         title: Text('${widget.societyName} Events & Polls'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         actions: [
+          if (_canCreatePoll || _canCreateInfo)
+            IconButton(
+              tooltip: 'Review analytics',
+              onPressed: _showReviewAnalyticsDialog,
+              icon: const Icon(Icons.insights_outlined),
+            ),
           if (_canCreateInfo)
             IconButton(
               tooltip: 'Add information',
@@ -2327,8 +2498,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CircleAvatar(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.1),
                       child: Icon(
                         widget.societyIcon,
                         color: Theme.of(context).colorScheme.primary,
@@ -2341,9 +2513,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                         children: [
                           Text(
                             '${widget.societyName} updates',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],
@@ -2396,7 +2566,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
                                   ),
                                   Column(
@@ -2404,7 +2576,11 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                                     children: [
                                       Chip(
                                         visualDensity: VisualDensity.compact,
-                                        label: Text(poll.isOpen ? 'Poll Open' : 'Poll Closed'),
+                                        label: Text(
+                                          poll.isOpen
+                                              ? 'Poll Open'
+                                              : 'Poll Closed',
+                                        ),
                                       ),
                                       const SizedBox(height: 4),
                                       if (poll.isOpen)
@@ -2454,7 +2630,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                                 (option) => Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: OutlinedButton.icon(
-                                    onPressed: (!poll.isOpen || poll.viewerVoteOptionId != null)
+                                    onPressed:
+                                        (!poll.isOpen ||
+                                            poll.viewerVoteOptionId != null)
                                         ? null
                                         : () => _voteOnPoll(poll, option),
                                     icon: Icon(
@@ -2464,7 +2642,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                                     ),
                                     label: Align(
                                       alignment: Alignment.centerLeft,
-                                      child: Text('${option.text} (${option.votes})'),
+                                      child: Text(
+                                        '${option.text} (${option.votes})',
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -2488,62 +2668,62 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
             if (_infoItems.isNotEmpty && _polls.isNotEmpty)
               const SizedBox(height: 6),
             ..._infoItems.map(
-                (info) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 74,
-                          child: Text(
-                            _timestampLabel(info.createdAt),
-                            style: TextStyle(color: Colors.grey.shade700),
-                          ),
+              (info) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 74,
+                        child: Text(
+                          _timestampLabel(info.createdAt),
+                          style: TextStyle(color: Colors.grey.shade700),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      info.title.isEmpty ? 'Message' : info.title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w700),
-                                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    info.title.isEmpty ? 'Message' : info.title,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
                                   ),
-                                  const Chip(
-                                    visualDensity: VisualDensity.compact,
-                                    label: Text('Info'),
+                                ),
+                                const Chip(
+                                  visualDensity: VisualDensity.compact,
+                                  label: Text('Info'),
+                                ),
+                                if (_canCreateInfo)
+                                  IconButton(
+                                    tooltip: 'Delete message',
+                                    onPressed: () => _deleteInfo(info),
+                                    icon: const Icon(Icons.delete_outline),
                                   ),
-                                  if (_canCreateInfo)
-                                    IconButton(
-                                      tooltip: 'Delete message',
-                                      onPressed: () => _deleteInfo(info),
-                                      icon: const Icon(Icons.delete_outline),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(info.content),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Posted by ${info.adminDisplayName}',
-                                style: TextStyle(color: Colors.grey.shade700),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(info.content),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Posted by ${info.adminDisplayName}',
+                              style: TextStyle(color: Colors.grey.shade700),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -2580,9 +2760,12 @@ class _SocietyPoll {
       id: (json['id'] as int?) ?? 0,
       title: (json['title'] as String?) ?? 'Untitled poll',
       description: (json['description'] as String?) ?? '',
-            createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ??
-              DateTime.now(),
-            closesAt: DateTime.tryParse((json['closes_at'] as String?) ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+          DateTime.now(),
+      closesAt:
+          DateTime.tryParse((json['closes_at'] as String?) ?? '') ??
+          DateTime.now(),
       isOpen: json['is_open'] == true,
       totalVotes: (json['total_votes'] as int?) ?? 0,
       viewerVoteOptionId: json['viewer_vote_option_id'] as int?,
@@ -2590,6 +2773,26 @@ class _SocietyPoll {
           .map((item) => item as Map<String, dynamic>)
           .map(_SocietyPollOption.fromJson)
           .toList(),
+    );
+  }
+}
+
+class _MonthlyReviewTrend {
+  final String month;
+  final double avgRating;
+  final int reviewCount;
+
+  const _MonthlyReviewTrend({
+    required this.month,
+    required this.avgRating,
+    required this.reviewCount,
+  });
+
+  factory _MonthlyReviewTrend.fromJson(Map<String, dynamic> json) {
+    return _MonthlyReviewTrend(
+      month: (json['month'] as String?) ?? '',
+      avgRating: ((json['avg_rating'] as num?) ?? 0).toDouble(),
+      reviewCount: (json['review_count'] as int?) ?? 0,
     );
   }
 }
@@ -2695,7 +2898,8 @@ class _SocietyInfo {
       title: (json['title'] as String?) ?? 'Information',
       content: (json['content'] as String?) ?? '',
       adminDisplayName: (json['admin_display_name'] as String?) ?? 'Admin',
-      createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+      createdAt:
+          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
           DateTime.now(),
     );
   }

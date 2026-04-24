@@ -8,6 +8,14 @@ import 'api_config.dart';
 class SocietyService {
   static String get _baseUrl => '${ApiConfig.baseUrl}/api/societies';
 
+  Map<String, String> _jsonHeaders({String? authToken}) {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (authToken != null && authToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $authToken';
+    }
+    return headers;
+  }
+
   Map<String, dynamic> _connectionError(Object error) {
     return {
       'success': false,
@@ -87,6 +95,7 @@ class SocietyService {
   Future<Map<String, dynamic>> getReviews({
     required String societyName,
     String? viewerEmail,
+    String? authToken,
     String sort = 'latest',
     int? minRating,
   }) async {
@@ -103,7 +112,9 @@ class SocietyService {
         '$_baseUrl/reviews/',
       ).replace(queryParameters: query);
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(uri, headers: _jsonHeaders(authToken: authToken))
+          .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
@@ -210,17 +221,20 @@ class SocietyService {
     required String societyName,
     required int rating,
     required String comment,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/add/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'email': email,
               'society_name': societyName,
               'rating': rating,
               'comment': comment,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -244,21 +258,24 @@ class SocietyService {
     }
   }
 
-  /// Submit a one-time reaction (like/dislike) to a review.
+  /// Submit or update a reaction (like/dislike) to a review.
   Future<Map<String, dynamic>> reactToReview({
     required String email,
     required int reviewId,
     required String reactionType,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/react/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'email': email,
               'review_id': reviewId,
               'reaction_type': reactionType,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -285,19 +302,64 @@ class SocietyService {
     }
   }
 
+  /// Fetch monthly review analytics for a society (admin only).
+  Future<Map<String, dynamic>> getReviewAnalytics({
+    required String societyName,
+    String? viewerEmail,
+    String? authToken,
+  }) async {
+    try {
+      final Map<String, String> query = {'society': societyName};
+      if (viewerEmail != null && viewerEmail.isNotEmpty) {
+        query['viewer_email'] = viewerEmail;
+      }
+
+      final uri = Uri.parse(
+        '$_baseUrl/reviews/analytics/',
+      ).replace(queryParameters: query);
+
+      final response = await http
+          .get(uri, headers: _jsonHeaders(authToken: authToken))
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body =
+          jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final List<dynamic> raw = body['trends'] as List<dynamic>? ?? [];
+        return {
+          'success': true,
+          'society_id': body['society_id'],
+          'society_name': body['society_name'],
+          'trends': raw.cast<Map<String, dynamic>>(),
+        };
+      }
+
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Could not load review analytics.',
+      };
+    } catch (error) {
+      return _connectionError(error);
+    }
+  }
+
   /// Delete a review as a society admin.
   Future<Map<String, dynamic>> deleteReviewAsAdmin({
     required String adminEmail,
     required int reviewId,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/delete/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'admin_email': adminEmail,
               'review_id': reviewId,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -326,16 +388,19 @@ class SocietyService {
     required String adminEmail,
     required int reviewId,
     required String responseText,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/respond/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'admin_email': adminEmail,
               'review_id': reviewId,
               'response_text': responseText,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -364,6 +429,7 @@ class SocietyService {
   Future<Map<String, dynamic>> getPolls({
     required String societyName,
     String? viewerEmail,
+    String? authToken,
   }) async {
     try {
       final Map<String, String> query = {'society': societyName};
@@ -372,7 +438,9 @@ class SocietyService {
       }
 
       final uri = Uri.parse('$_baseUrl/polls/').replace(queryParameters: query);
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(uri, headers: _jsonHeaders(authToken: authToken))
+          .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
@@ -409,12 +477,13 @@ class SocietyService {
     required String description,
     required List<String> options,
     required int durationHours,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/create/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'admin_email': adminEmail,
               'society_name': societyName,
@@ -422,6 +491,8 @@ class SocietyService {
               'description': description,
               'options': options,
               'duration_hours': durationHours,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -452,17 +523,20 @@ class SocietyService {
     required String societyName,
     required String title,
     required String content,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/info/create/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'admin_email': adminEmail,
               'society_name': societyName,
               'title': title,
               'content': content,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -492,16 +566,19 @@ class SocietyService {
     required String email,
     required int pollId,
     required int optionId,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/vote/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode({
               'email': email,
               'poll_id': pollId,
               'option_id': optionId,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -533,6 +610,7 @@ class SocietyService {
     required String action,
     String? optionText,
     int? optionId,
+    String? authToken,
   }) async {
     try {
       final Map<String, dynamic> payload = {
@@ -546,11 +624,14 @@ class SocietyService {
       if (optionId != null) {
         payload['option_id'] = optionId;
       }
+      if (authToken != null && authToken.isNotEmpty) {
+        payload['auth_token'] = authToken;
+      }
 
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/edit/'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _jsonHeaders(authToken: authToken),
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 10));
@@ -579,13 +660,19 @@ class SocietyService {
   Future<Map<String, dynamic>> deletePoll({
     required String adminEmail,
     required int pollId,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/delete/'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'admin_email': adminEmail, 'poll_id': pollId}),
+            headers: _jsonHeaders(authToken: authToken),
+            body: jsonEncode({
+              'admin_email': adminEmail,
+              'poll_id': pollId,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
+            }),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -609,13 +696,19 @@ class SocietyService {
   Future<Map<String, dynamic>> deleteInfo({
     required String adminEmail,
     required int infoId,
+    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/info/delete/'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'admin_email': adminEmail, 'info_id': infoId}),
+            headers: _jsonHeaders(authToken: authToken),
+            body: jsonEncode({
+              'admin_email': adminEmail,
+              'info_id': infoId,
+              if (authToken != null && authToken.isNotEmpty)
+                'auth_token': authToken,
+            }),
           )
           .timeout(const Duration(seconds: 10));
 

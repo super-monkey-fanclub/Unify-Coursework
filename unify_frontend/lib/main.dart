@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'profile.dart';
 import 'socieites.dart';
 import 'about_us.dart'; // Add this import
@@ -41,6 +43,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const String _sessionUserStorageKey = 'unify.current_user';
+
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final List<String> _placeholderItems = [
@@ -103,8 +107,7 @@ class _HomePageState extends State<HomePage> {
     ),
     Society(
       name: 'Dance Society',
-      description:
-          'Learn routines and perform at events throughout the year.',
+      description: 'Learn routines and perform at events throughout the year.',
       icon: Icons.music_video,
       memberCount: 77,
       rating: 4.0,
@@ -148,6 +151,40 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _filteredItems = List.from(_placeholderItems);
     _searchController.addListener(_onSearchChanged);
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawUser = prefs.getString(_sessionUserStorageKey);
+    if (rawUser == null || rawUser.isEmpty) {
+      return;
+    }
+
+    try {
+      final parsed = jsonDecode(rawUser) as Map<String, dynamic>;
+      if (!mounted) return;
+
+      setState(() {
+        _currentUser = parsed;
+      });
+
+      final email = (parsed['email'] as String?)?.toLowerCase();
+      if (email != null && email.isNotEmpty) {
+        unawaited(_loadJoinedSocieties(email));
+      }
+    } catch (_) {
+      await prefs.remove(_sessionUserStorageKey);
+    }
+  }
+
+  Future<void> _persistCurrentUser(Map<String, dynamic>? user) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (user == null) {
+      await prefs.remove(_sessionUserStorageKey);
+      return;
+    }
+    await prefs.setString(_sessionUserStorageKey, jsonEncode(user));
   }
 
   void _onSearchChanged() {
@@ -194,10 +231,12 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _currentUser = null;
       });
+      unawaited(_persistCurrentUser(null));
     } else if (value is Map<String, dynamic>) {
       setState(() {
         _currentUser = value;
       });
+      unawaited(_persistCurrentUser(_currentUser));
       // Load joined societies from the API if the user object has an email
       final email = (value['email'] as String?)?.toLowerCase();
       if (email != null && email.isNotEmpty) {
@@ -211,12 +250,14 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     if (res['success'] == true) {
       setState(() {
-        final List<String> names = (res['societies'] as List<dynamic>?)
+        final List<String> names =
+            (res['societies'] as List<dynamic>?)
                 ?.map((e) => e.toString())
                 .toList() ??
             [];
         _currentUser = {...?_currentUser, 'joinedSocieties': names};
       });
+      unawaited(_persistCurrentUser(_currentUser));
     }
   }
 
@@ -243,6 +284,9 @@ class _HomePageState extends State<HomePage> {
           userEmail: _currentUser != null
               ? _currentUser!['email'] as String?
               : null,
+          userAuthToken: _currentUser != null
+              ? _currentUser!['auth_token'] as String?
+              : null,
         ),
       ),
     );
@@ -262,7 +306,10 @@ class _HomePageState extends State<HomePage> {
     _navigateToSocietyDetails(society);
   }
 
-  void _navigateToSocietyDetails(Society society, {bool initialJoined = false}) {
+  void _navigateToSocietyDetails(
+    Society society, {
+    bool initialJoined = false,
+  }) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SocietyDetailsPage(
@@ -270,7 +317,12 @@ class _HomePageState extends State<HomePage> {
           description: society.description,
           imageUrl: society.imageUrl,
           icon: society.icon,
-          userEmail: _currentUser != null ? (_currentUser!['email'] as String?) : null,
+          userEmail: _currentUser != null
+              ? (_currentUser!['email'] as String?)
+              : null,
+          userAuthToken: _currentUser != null
+              ? (_currentUser!['auth_token'] as String?)
+              : null,
           initialJoined: initialJoined,
           initialMemberCount: society.memberCount,
           initialAverageRating: society.rating,
@@ -291,7 +343,11 @@ class _HomePageState extends State<HomePage> {
                 return s;
               }).toList();
               // also update _currentUser.joinedSocieties when membership changes
-              final js = (_currentUser?['joinedSocieties'] as List?)?.map((e) => e.toString()).toList() ?? [];
+              final js =
+                  (_currentUser?['joinedSocieties'] as List?)
+                      ?.map((e) => e.toString())
+                      .toList() ??
+                  [];
               final names = js.map((e) => e.toLowerCase().trim()).toList();
               if (joined) {
                 if (!names.contains(society.name.toLowerCase().trim())) {
@@ -299,10 +355,17 @@ class _HomePageState extends State<HomePage> {
                   _currentUser = {...?_currentUser, 'joinedSocieties': newList};
                 }
               } else {
-                final newList = js.where((n) => n.toLowerCase().trim() != society.name.toLowerCase().trim()).toList();
+                final newList = js
+                    .where(
+                      (n) =>
+                          n.toLowerCase().trim() !=
+                          society.name.toLowerCase().trim(),
+                    )
+                    .toList();
                 _currentUser = {...?_currentUser, 'joinedSocieties': newList};
               }
             });
+            unawaited(_persistCurrentUser(_currentUser));
           },
           onAverageRatingChanged: (rating) {
             setState(() {
@@ -435,131 +498,147 @@ class _HomePageState extends State<HomePage> {
               // Joined societies quick access
               if (_currentUser != null) ...[
                 const SizedBox(height: 8),
-                Builder(builder: (context) {
-                    final joinedNames = (_currentUser!['joinedSocieties'] as List?)
-                        ?.map((e) => e.toString().toLowerCase().trim())
-                        .toSet() ??
-                      <String>{};
+                Builder(
+                  builder: (context) {
+                    final joinedNames =
+                        (_currentUser!['joinedSocieties'] as List?)
+                            ?.map((e) => e.toString().toLowerCase().trim())
+                            .toSet() ??
+                        <String>{};
                     final joined = _allSocieties
-                      .where((s) => joinedNames.contains(s.name.toLowerCase().trim()))
-                      .toList();
+                        .where(
+                          (s) =>
+                              joinedNames.contains(s.name.toLowerCase().trim()),
+                        )
+                        .toList();
 
-                  if (joined.isEmpty) {
-                    return Card(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'You haven\'t joined any societies yet',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Tap "Find societies" to browse and join groups.',
-                                    style: TextStyle(color: Colors.grey.shade700),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _openSocietiesPage,
-                              child: const Text('Find societies'),
-                            ),
-                          ],
+                    if (joined.isEmpty) {
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                    );
-                  }
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'You haven\'t joined any societies yet',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Tap "Find societies" to browse and join groups.',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _openSocietiesPage,
+                                child: const Text('Find societies'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Your societies',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 110,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: joined.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            final s = joined[index];
-                            return InkWell(
-                              onTap: () => _navigateToSocietyDetails(s, initialJoined: true),
-                              child: SizedBox(
-                                width: 220,
-                                child: Card(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 28,
-                                          child: Icon(s.icon, size: 28),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                s.name,
-                                                style: const TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.w700),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                '${s.memberCount} members · ${s.rating} ★',
-                                                style: TextStyle(
-                                                    color:
-                                                        Colors.grey.shade700),
-                                              ),
-                                            ],
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your societies',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 110,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: joined.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final s = joined[index];
+                              return InkWell(
+                                onTap: () => _navigateToSocietyDetails(
+                                  s,
+                                  initialJoined: true,
+                                ),
+                                child: SizedBox(
+                                  width: 220,
+                                  child: Card(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12.0),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 28,
+                                            child: Icon(s.icon, size: 28),
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  s.name,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  '${s.memberCount} members · ${s.rating} ★',
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  );
-                }),
+                        const SizedBox(height: 12),
+                      ],
+                    );
+                  },
+                ),
               ],
               // Prompt when not signed in
               if (_currentUser == null) ...[
                 const SizedBox(height: 8),
                 Card(
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: Row(
@@ -605,8 +684,13 @@ class _HomePageState extends State<HomePage> {
                       horizontal: 12,
                       vertical: 10,
                     ),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                   ),
                   label: const Text('Find societies'),
                 ),
@@ -628,13 +712,20 @@ class _HomePageState extends State<HomePage> {
                 height: 350,
                 child: HeroCarousel(
                   societies: _allSocieties,
-                  userEmail: _currentUser != null ? (_currentUser!['email'] as String?) : null,
+                  userEmail: _currentUser != null
+                      ? (_currentUser!['email'] as String?)
+                      : null,
+                  userAuthToken: _currentUser != null
+                      ? (_currentUser!['auth_token'] as String?)
+                      : null,
                 ),
               ),
               const SizedBox(height: 18),
               ReviewsSection(
                 societies: _allSocieties,
-                userEmail: _currentUser != null ? (_currentUser!['email'] as String?) : null,
+                userEmail: _currentUser != null
+                    ? (_currentUser!['email'] as String?)
+                    : null,
               ),
               const SizedBox(height: 18),
               const SizedBox(height: 18),
@@ -742,8 +833,14 @@ class _HeaderStatChip extends StatelessWidget {
 class HeroCarousel extends StatefulWidget {
   final List<Society> societies;
   final String? userEmail;
+  final String? userAuthToken;
 
-  const HeroCarousel({super.key, required this.societies, this.userEmail});
+  const HeroCarousel({
+    super.key,
+    required this.societies,
+    this.userEmail,
+    this.userAuthToken,
+  });
 
   @override
   State<HeroCarousel> createState() => _HeroCarouselState();
@@ -767,6 +864,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
           initialMemberCount: society.memberCount,
           initialAverageRating: society.rating,
           userEmail: widget.userEmail,
+          userAuthToken: widget.userAuthToken,
         ),
       ),
     );
@@ -844,7 +942,10 @@ class _HeroCarouselState extends State<HeroCarousel> {
                     color: Colors.white,
                     icon: const Icon(Icons.arrow_back_ios_new),
                     onPressed: () {
-                      final target = (_currentPage - 1).clamp(0, _societies.length - 1);
+                      final target = (_currentPage - 1).clamp(
+                        0,
+                        _societies.length - 1,
+                      );
                       _pageController.animateToPage(
                         target,
                         duration: const Duration(milliseconds: 300),
@@ -852,7 +953,10 @@ class _HeroCarouselState extends State<HeroCarousel> {
                       );
                     },
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
                   ),
                 ),
               ),
@@ -874,7 +978,10 @@ class _HeroCarouselState extends State<HeroCarousel> {
                     color: Colors.white,
                     icon: const Icon(Icons.arrow_forward_ios),
                     onPressed: () {
-                      final target = (_currentPage + 1).clamp(0, _societies.length - 1);
+                      final target = (_currentPage + 1).clamp(
+                        0,
+                        _societies.length - 1,
+                      );
                       _pageController.animateToPage(
                         target,
                         duration: const Duration(milliseconds: 300),
@@ -882,7 +989,10 @@ class _HeroCarouselState extends State<HeroCarousel> {
                       );
                     },
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
                   ),
                 ),
               ),
@@ -1046,11 +1156,19 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     if (widget.societies.length > 4) samples.add(widget.societies[4]);
 
     for (final s in samples) {
-      final res = await _service.getReviews(societyName: s.name, viewerEmail: widget.userEmail);
+      final res = await _service.getReviews(
+        societyName: s.name,
+        viewerEmail: widget.userEmail,
+      );
       if (res['success'] == true) {
-        final List<Map<String, dynamic>> revs = (res['reviews'] as List<dynamic>).cast<Map<String, dynamic>>();
+        final List<Map<String, dynamic>> revs =
+            (res['reviews'] as List<dynamic>).cast<Map<String, dynamic>>();
         for (final r in revs.take(2)) {
-          collected.add({...r, 'society_name': s.name, 'society_rating': s.rating});
+          collected.add({
+            ...r,
+            'society_name': s.name,
+            'society_rating': s.rating,
+          });
         }
       }
       if (collected.length >= 6) break;
@@ -1070,63 +1188,119 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       children: [
         Text(
           'Community reviews',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         _loading
             ? const Center(child: CircularProgressIndicator())
             : _reviews.isEmpty
-                ? Text('No reviews available yet.', style: TextStyle(color: Colors.grey.shade700))
-                : SizedBox(
-                    height: 160,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.only(top: 8),
-                      itemCount: _reviews.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final r = _reviews[index];
-                        return SizedBox(
-                          width: 320,
-                          child: Card(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+            ? Text(
+                'No reviews available yet.',
+                style: TextStyle(color: Colors.grey.shade700),
+              )
+            : SizedBox(
+                height: 160,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(top: 8),
+                  itemCount: _reviews.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final r = _reviews[index];
+                    return SizedBox(
+                      width: 320,
+                      child: Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(r['society_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                                      Row(children: [const Icon(Icons.star, color: Colors.amber, size: 16), const SizedBox(width: 6), Text((r['rating'] ?? 0).toString())]),
-                                    ],
+                                  Text(
+                                    r['society_name'] ?? '',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Expanded(child: Text((r['comment'] ?? '').toString(), overflow: TextOverflow.ellipsis, maxLines: 4)),
-                                  const SizedBox(height: 8),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('By ${r['author_display_name'] ?? r['author'] ?? 'User'}', style: TextStyle(color: Colors.grey.shade700)),
-                                      TextButton(
-                                        onPressed: () {
-                                          // navigate to society details
-                                          final society = widget.societies.firstWhere((s) => s.name == (r['society_name'] ?? ''), orElse: () => widget.societies.first);
-                                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocietyDetailsPage(name: society.name, description: society.description, imageUrl: society.imageUrl, icon: society.icon, initialMemberCount: society.memberCount, initialAverageRating: society.rating, userEmail: widget.userEmail)));
-                                        },
-                                        child: const Text('View'),
+                                      const Icon(
+                                        Icons.star,
+                                        color: Colors.amber,
+                                        size: 16,
                                       ),
+                                      const SizedBox(width: 6),
+                                      Text((r['rating'] ?? 0).toString()),
                                     ],
                                   ),
                                 ],
                               ),
-                            ),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                child: Text(
+                                  (r['comment'] ?? '').toString(),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 4,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'By ${r['author_display_name'] ?? r['author'] ?? 'User'}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      // navigate to society details
+                                      final society = widget.societies
+                                          .firstWhere(
+                                            (s) =>
+                                                s.name ==
+                                                (r['society_name'] ?? ''),
+                                            orElse: () =>
+                                                widget.societies.first,
+                                          );
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => SocietyDetailsPage(
+                                            name: society.name,
+                                            description: society.description,
+                                            imageUrl: society.imageUrl,
+                                            icon: society.icon,
+                                            initialMemberCount:
+                                                society.memberCount,
+                                            initialAverageRating:
+                                                society.rating,
+                                            userEmail: widget.userEmail,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text('View'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
       ],
     );
   }

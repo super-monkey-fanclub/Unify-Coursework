@@ -3,7 +3,9 @@ import re
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q
+from django.core import signing
+from django.db.models import Avg, Count, Q
+from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -35,6 +37,8 @@ BANNED_REVIEW_TERMS = {
     'bitch',
     'bastard',
 }
+AUTH_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+AUTH_TOKEN_SALT = 'unify.auth'
 
 
 def _json_body(request: HttpRequest) -> dict:
@@ -54,6 +58,52 @@ def _author_display_name(user: User) -> str:
     if user.username:
         return user.username
     return user.email.split('@')[0]
+
+
+def _issue_auth_token(user: User) -> str:
+    return signing.dumps({'uid': user.id}, salt=AUTH_TOKEN_SALT)
+
+
+def _auth_token_from_request(request: HttpRequest, data: dict | None = None) -> str | None:
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.lower().startswith('bearer '):
+        token = auth_header[7:].strip()
+        if token:
+            return token
+
+    if data is not None:
+        token_from_body = _safe_text(data.get('auth_token'))
+        if token_from_body:
+            return token_from_body
+
+    token_from_query = _safe_text(request.GET.get('auth_token'))
+    return token_from_query or None
+
+
+def _authenticated_user_from_request(request: HttpRequest, data: dict | None = None) -> User | None:
+    token = _auth_token_from_request(request, data=data)
+    if not token:
+        return None
+
+    try:
+        payload = signing.loads(
+            token,
+            salt=AUTH_TOKEN_SALT,
+            max_age=AUTH_TOKEN_MAX_AGE_SECONDS,
+        )
+    except signing.BadSignature:
+        return None
+    except signing.SignatureExpired:
+        return None
+
+    user_id = payload.get('uid')
+    if not user_id:
+        return None
+
+    try:
+        return User.objects.get(id=int(user_id))
+    except (User.DoesNotExist, ValueError, TypeError):
+        return None
 
 
 def _is_admin_account(user: User) -> bool:
@@ -251,14 +301,18 @@ def register_view(request: HttpRequest):
     )
     user.first_name = name
     user.save()
+    auth_token = _issue_auth_token(user)
 
     return JsonResponse(
         {
             'message': 'Registration successful.',
+            'auth_token': auth_token,
             'user': {
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'account_type': user.account_type,
+                'auth_token': auth_token,
             },
         },
         status=201,
@@ -284,13 +338,18 @@ def login_view(request: HttpRequest):
     if not user.check_password(password):
         return JsonResponse({'error': 'Invalid email or password.'}, status=401)
 
+    auth_token = _issue_auth_token(user)
+
     return JsonResponse(
         {
             'message': 'Login successful.',
+            'auth_token': auth_token,
             'user': {
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'account_type': user.account_type,
+                'auth_token': auth_token,
             },
         },
         status=200,
@@ -479,8 +538,8 @@ def society_reviews_view(request: HttpRequest):
         if min_rating < 1 or min_rating > 5:
             return JsonResponse({'error': 'min_rating must be between 1 and 5.'}, status=400)
 
-    viewer = None
-    if viewer_email:
+    viewer = _authenticated_user_from_request(request)
+    if viewer is None and viewer_email:
         try:
             viewer = User.objects.get(email=viewer_email)
         except User.DoesNotExist:
@@ -553,7 +612,7 @@ def society_reviews_view(request: HttpRequest):
                 'likes': review.likes_count,
                 'dislikes': review.dislikes_count,
                 'user_reaction': current_user_reaction,
-                'can_react': viewer_can_react and current_user_reaction is None,
+                'can_react': viewer_can_react,
                 'admin_response': {
                     'text': response.response_text,
                     'admin_display_name': _author_display_name(response.admin),
@@ -585,8 +644,13 @@ def add_review_view(request: HttpRequest):
     comment = _safe_text(data.get('comment'))
     rating_raw = data.get('rating')
 
-    if not email or not society_name or rating_raw is None:
-        return JsonResponse({'error': 'email, society_name and rating are required.'}, status=400)
+    user = _authenticated_user_from_request(request, data=data)
+
+    if not society_name or rating_raw is None:
+        return JsonResponse({'error': 'society_name and rating are required.'}, status=400)
+
+    if user is None and not email:
+        return JsonResponse({'error': 'Authentication token or email is required.'}, status=400)
 
     try:
         rating = int(rating_raw)
@@ -610,10 +674,11 @@ def add_review_view(request: HttpRequest):
             status=400,
         )
 
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'User not found for that email.'}, status=404)
+    if user is None:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found for that email.'}, status=404)
 
     try:
         society = Society.objects.get(name=society_name)
@@ -656,8 +721,13 @@ def react_review_view(request: HttpRequest):
     reaction_type = _safe_text(data.get('reaction_type')).lower()
     review_id_raw = data.get('review_id')
 
-    if not email or not reaction_type or review_id_raw is None:
-        return JsonResponse({'error': 'email, review_id and reaction_type are required.'}, status=400)
+    user = _authenticated_user_from_request(request, data=data)
+
+    if not reaction_type or review_id_raw is None:
+        return JsonResponse({'error': 'review_id and reaction_type are required.'}, status=400)
+
+    if user is None and not email:
+        return JsonResponse({'error': 'Authentication token or email is required.'}, status=400)
 
     if reaction_type not in {'like', 'dislike'}:
         return JsonResponse({'error': 'reaction_type must be like or dislike.'}, status=400)
@@ -667,10 +737,11 @@ def react_review_view(request: HttpRequest):
     except (TypeError, ValueError):
         return JsonResponse({'error': 'review_id must be an integer.'}, status=400)
 
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'User not found for that email.'}, status=404)
+    if user is None:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found for that email.'}, status=404)
 
     try:
         review = Review.objects.select_related('society').get(id=review_id)
@@ -683,27 +754,90 @@ def react_review_view(request: HttpRequest):
     if not Membership.objects.filter(user=user, society=review.society).exists():
         return JsonResponse({'error': 'Only members of this society can react.'}, status=403)
 
-    if ReviewReaction.objects.filter(user=user, review=review).exists():
-        return JsonResponse({'error': 'You can only react to a review once.'}, status=409)
+    existing_reactions = ReviewReaction.objects.filter(user=user, review=review).order_by('id')
+    existing_reaction = existing_reactions.first()
 
-    ReviewReaction.objects.create(
-        user=user,
-        review=review,
-        reaction_type=reaction_type,
-    )
+    if existing_reactions.count() > 1:
+        existing_reactions.exclude(id=existing_reaction.id).delete()
+
+    created = False
+    if existing_reaction is None:
+        ReviewReaction.objects.create(
+            user=user,
+            review=review,
+            reaction_type=reaction_type,
+        )
+        created = True
+    elif existing_reaction.reaction_type != reaction_type:
+        existing_reaction.reaction_type = reaction_type
+        existing_reaction.save(update_fields=['reaction_type'])
 
     likes = ReviewReaction.objects.filter(review=review, reaction_type='like').count()
     dislikes = ReviewReaction.objects.filter(review=review, reaction_type='dislike').count()
 
     return JsonResponse(
         {
-            'message': 'Reaction recorded.',
+            'message': 'Reaction recorded.' if created else 'Reaction updated.',
             'likes': likes,
             'dislikes': dislikes,
             'user_reaction': reaction_type,
             'reactor_up_number': user.up_number,
         },
-        status=201,
+        status=201 if created else 200,
+    )
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def society_review_analytics_view(request: HttpRequest):
+    society_name = _safe_text(request.GET.get('society'))
+    viewer_email = _safe_text(request.GET.get('viewer_email')).lower()
+
+    if not society_name:
+        return JsonResponse({'error': 'society query parameter is required.'}, status=400)
+
+    try:
+        society = Society.objects.get(name=society_name)
+    except Society.DoesNotExist:
+        return JsonResponse({'error': 'Society not found.'}, status=404)
+
+    viewer = _authenticated_user_from_request(request)
+    if viewer is None and viewer_email:
+        try:
+            viewer = User.objects.get(email=viewer_email)
+        except User.DoesNotExist:
+            viewer = None
+
+    if viewer is None:
+        return JsonResponse({'error': 'Authentication token or viewer_email is required.'}, status=401)
+
+    if not _is_society_admin(viewer, society):
+        return JsonResponse({'error': 'Only society admins can view review analytics.'}, status=403)
+
+    trend_rows = (
+        Review.objects.filter(society=society)
+        .annotate(month=TruncMonth('created_at'))
+        .values('month')
+        .annotate(avg_rating=Avg('rating'), review_count=Count('id'))
+        .order_by('month')
+    )
+
+    trends = [
+        {
+            'month': row['month'].strftime('%Y-%m'),
+            'avg_rating': round(float(row['avg_rating'] or 0.0), 1),
+            'review_count': int(row['review_count'] or 0),
+        }
+        for row in trend_rows
+    ]
+
+    return JsonResponse(
+        {
+            'society_id': society.id,
+            'society_name': society.name,
+            'trends': trends,
+        },
+        status=200,
     )
 
 
@@ -714,18 +848,24 @@ def admin_delete_review_view(request: HttpRequest):
     admin_email = _safe_text(data.get('admin_email')).lower()
     review_id_raw = data.get('review_id')
 
-    if not admin_email or review_id_raw is None:
-        return JsonResponse({'error': 'admin_email and review_id are required.'}, status=400)
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if review_id_raw is None:
+        return JsonResponse({'error': 'review_id is required.'}, status=400)
+
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
 
     try:
         review_id = int(review_id_raw)
     except (TypeError, ValueError):
         return JsonResponse({'error': 'review_id must be an integer.'}, status=400)
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     try:
         review = Review.objects.select_related('society').get(id=review_id)
@@ -747,11 +887,16 @@ def admin_respond_review_view(request: HttpRequest):
     response_text = _safe_text(data.get('response_text'))
     review_id_raw = data.get('review_id')
 
-    if not admin_email or not response_text or review_id_raw is None:
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if not response_text or review_id_raw is None:
         return JsonResponse(
-            {'error': 'admin_email, review_id and response_text are required.'},
+            {'error': 'review_id and response_text are required.'},
             status=400,
         )
+
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
 
     if len(response_text) > REVIEW_MAX_COMMENT_LENGTH:
         return JsonResponse(
@@ -766,10 +911,11 @@ def admin_respond_review_view(request: HttpRequest):
     except (TypeError, ValueError):
         return JsonResponse({'error': 'review_id must be an integer.'}, status=400)
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     try:
         review = Review.objects.select_related('society').get(id=review_id)
@@ -814,8 +960,8 @@ def society_polls_view(request: HttpRequest):
         defaults={'description': '', 'category': 'General'},
     )
 
-    viewer = None
-    if viewer_email:
+    viewer = _authenticated_user_from_request(request)
+    if viewer is None and viewer_email:
         try:
             viewer = User.objects.get(email=viewer_email)
         except User.DoesNotExist:
@@ -871,10 +1017,10 @@ def society_poll_detail_view(request: HttpRequest):
     except Poll.DoesNotExist:
         return JsonResponse({'error': 'Poll not found.'}, status=404)
 
-    viewer = None
+    viewer = _authenticated_user_from_request(request)
     viewer_is_member = False
     viewer_is_admin = False
-    if viewer_email:
+    if viewer is None and viewer_email:
         try:
             viewer = User.objects.get(email=viewer_email)
         except User.DoesNotExist:
@@ -908,16 +1054,22 @@ def create_society_info_view(request: HttpRequest):
     title = _safe_text(data.get('title'))
     content = _safe_text(data.get('content'))
 
-    if not admin_email or not society_name or not content:
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if not society_name or not content:
         return JsonResponse(
-            {'error': 'admin_email, society_name and content are required.'},
+            {'error': 'society_name and content are required.'},
             status=400,
         )
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
+
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     society, _ = Society.objects.get_or_create(
         name=society_name,
@@ -954,11 +1106,16 @@ def create_society_poll_view(request: HttpRequest):
     options_raw = data.get('options')
     duration_hours_raw = data.get('duration_hours')
 
-    if not admin_email or not society_name or not title or duration_hours_raw is None:
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if not society_name or not title or duration_hours_raw is None:
         return JsonResponse(
-            {'error': 'admin_email, society_name, title and duration_hours are required.'},
+            {'error': 'society_name, title and duration_hours are required.'},
             status=400,
         )
+
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
 
     try:
         duration_hours = int(duration_hours_raw)
@@ -983,10 +1140,11 @@ def create_society_poll_view(request: HttpRequest):
     if len(options) < 2:
         return JsonResponse({'error': 'At least 2 unique poll options are required.'}, status=400)
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     society, _ = Society.objects.get_or_create(
         name=society_name,
@@ -1028,18 +1186,24 @@ def edit_society_poll_view(request: HttpRequest):
     poll_id_raw = data.get('poll_id')
     action = _safe_text(data.get('action')).lower()
 
-    if not admin_email or poll_id_raw is None or not action:
-        return JsonResponse({'error': 'admin_email, poll_id and action are required.'}, status=400)
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if poll_id_raw is None or not action:
+        return JsonResponse({'error': 'poll_id and action are required.'}, status=400)
+
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
 
     try:
         poll_id = int(poll_id_raw)
     except (TypeError, ValueError):
         return JsonResponse({'error': 'poll_id must be an integer.'}, status=400)
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     try:
         poll = Poll.objects.select_related('society').get(id=poll_id)
@@ -1103,18 +1267,24 @@ def delete_society_poll_view(request: HttpRequest):
     admin_email = _safe_text(data.get('admin_email')).lower()
     poll_id_raw = data.get('poll_id')
 
-    if not admin_email or poll_id_raw is None:
-        return JsonResponse({'error': 'admin_email and poll_id are required.'}, status=400)
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if poll_id_raw is None:
+        return JsonResponse({'error': 'poll_id is required.'}, status=400)
+
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
 
     try:
         poll_id = int(poll_id_raw)
     except (TypeError, ValueError):
         return JsonResponse({'error': 'poll_id must be an integer.'}, status=400)
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     try:
         poll = Poll.objects.select_related('society').get(id=poll_id)
@@ -1135,18 +1305,24 @@ def delete_society_info_view(request: HttpRequest):
     admin_email = _safe_text(data.get('admin_email')).lower()
     info_id_raw = data.get('info_id')
 
-    if not admin_email or info_id_raw is None:
-        return JsonResponse({'error': 'admin_email and info_id are required.'}, status=400)
+    admin_user = _authenticated_user_from_request(request, data=data)
+
+    if info_id_raw is None:
+        return JsonResponse({'error': 'info_id is required.'}, status=400)
+
+    if admin_user is None and not admin_email:
+        return JsonResponse({'error': 'Authentication token or admin_email is required.'}, status=400)
 
     try:
         info_id = int(info_id_raw)
     except (TypeError, ValueError):
         return JsonResponse({'error': 'info_id must be an integer.'}, status=400)
 
-    try:
-        admin_user = User.objects.get(email=admin_email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
+    if admin_user is None:
+        try:
+            admin_user = User.objects.get(email=admin_email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Admin user not found for that email.'}, status=404)
 
     try:
         info = SocietyInfo.objects.select_related('society').get(id=info_id)
@@ -1168,8 +1344,13 @@ def vote_society_poll_view(request: HttpRequest):
     poll_id_raw = data.get('poll_id')
     option_id_raw = data.get('option_id')
 
-    if not email or poll_id_raw is None or option_id_raw is None:
-        return JsonResponse({'error': 'email, poll_id and option_id are required.'}, status=400)
+    user = _authenticated_user_from_request(request, data=data)
+
+    if poll_id_raw is None or option_id_raw is None:
+        return JsonResponse({'error': 'poll_id and option_id are required.'}, status=400)
+
+    if user is None and not email:
+        return JsonResponse({'error': 'Authentication token or email is required.'}, status=400)
 
     try:
         poll_id = int(poll_id_raw)
@@ -1177,10 +1358,11 @@ def vote_society_poll_view(request: HttpRequest):
     except (TypeError, ValueError):
         return JsonResponse({'error': 'poll_id and option_id must be integers.'}, status=400)
 
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'User not found for that email.'}, status=404)
+    if user is None:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found for that email.'}, status=404)
 
     try:
         poll = Poll.objects.select_related('society').get(id=poll_id)
