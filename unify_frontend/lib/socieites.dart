@@ -2211,7 +2211,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in as an admin to view analytics.')),
+        const SnackBar(
+          content: Text('Please log in as an admin to view analytics.'),
+        ),
       );
       return;
     }
@@ -2228,8 +2230,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result['message']?.toString() ??
-                'Could not load review analytics.',
+            result['message']?.toString() ?? 'Could not load review analytics.',
           ),
         ),
       );
@@ -2262,7 +2263,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                           (trend) => DataRow(
                             cells: [
                               DataCell(Text(_monthLabel(trend.month))),
-                              DataCell(Text(trend.avgRating.toStringAsFixed(1))),
+                              DataCell(
+                                Text(trend.avgRating.toStringAsFixed(1)),
+                              ),
                               DataCell(Text('${trend.reviewCount}')),
                             ],
                           ),
