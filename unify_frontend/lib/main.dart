@@ -3,6 +3,7 @@ import 'dart:async';
 import 'profile.dart';
 import 'socieites.dart';
 import 'about_us.dart'; // Add this import
+import 'services/society_service.dart';
 
 void main() {
   runApp(const UnifyApp());
@@ -52,7 +53,95 @@ class _HomePageState extends State<HomePage> {
   late List<String> _filteredItems;
   bool _showHeaderSearch = false;
 
+  // All available societies (used to resolve joined society names to objects)
+  List<Society> _allSocieties = [
+    Society(
+      name: 'Art Society',
+      description:
+          'A friendly society for drawing, painting, and creative workshops.',
+      icon: Icons.palette,
+      memberCount: 82,
+      rating: 4.6,
+      imageUrl:
+          'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Anime Society',
+      description: 'Weekly anime screenings and socials for all fans.',
+      icon: Icons.tv,
+      memberCount: 101,
+      rating: 4.2,
+      imageUrl:
+          'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Gaming Society',
+      description: 'Casual and competitive gaming events across many genres.',
+      icon: Icons.sports_esports,
+      memberCount: 174,
+      rating: 4.8,
+      imageUrl:
+          'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Music Society',
+      description: 'Jam sessions, open mics, and opportunities to perform.',
+      icon: Icons.music_note,
+      memberCount: 93,
+      rating: 4.4,
+      imageUrl:
+          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Photography Club',
+      description: 'Photo walks, editing tips, and portfolio feedback.',
+      icon: Icons.camera_alt,
+      memberCount: 64,
+      rating: 4.1,
+      imageUrl:
+          'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Dance Society',
+      description:
+          'Learn routines and perform at events throughout the year.',
+      icon: Icons.music_video,
+      memberCount: 77,
+      rating: 4.0,
+      imageUrl:
+          'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Drama Club',
+      description: 'Acting workshops, productions, and backstage roles.',
+      icon: Icons.theater_comedy,
+      memberCount: 59,
+      rating: 3.9,
+      imageUrl:
+          'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Coding Society',
+      description: 'Hack nights, project teams, and interview practice.',
+      icon: Icons.code,
+      memberCount: 141,
+      rating: 4.7,
+      imageUrl:
+          'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Robotics Club',
+      description: 'Build, program, and compete with robotics projects.',
+      icon: Icons.precision_manufacturing,
+      memberCount: 48,
+      rating: 4.3,
+      imageUrl:
+          'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
+    ),
+  ];
+
   Map<String, dynamic>? _currentUser;
+  final SocietyService _societyService = SocietyService();
 
   @override
   void initState() {
@@ -109,6 +198,25 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _currentUser = value;
       });
+      // Load joined societies from the API if the user object has an email
+      final email = (value['email'] as String?)?.toLowerCase();
+      if (email != null && email.isNotEmpty) {
+        _loadJoinedSocieties(email);
+      }
+    }
+  }
+
+  Future<void> _loadJoinedSocieties(String email) async {
+    final res = await _societyService.getMySocieties(email: email);
+    if (!mounted) return;
+    if (res['success'] == true) {
+      setState(() {
+        final List<String> names = (res['societies'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+        _currentUser = {...?_currentUser, 'joinedSocieties': names};
+      });
     }
   }
 
@@ -146,6 +254,74 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(
         builder: (_) =>
             SearchResultsPage(query: searchQuery, items: _placeholderItems),
+      ),
+    );
+  }
+
+  void _openSocietyDetails(Society society) {
+    _navigateToSocietyDetails(society);
+  }
+
+  void _navigateToSocietyDetails(Society society, {bool initialJoined = false}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SocietyDetailsPage(
+          name: society.name,
+          description: society.description,
+          imageUrl: society.imageUrl,
+          icon: society.icon,
+          userEmail: _currentUser != null ? (_currentUser!['email'] as String?) : null,
+          initialJoined: initialJoined,
+          initialMemberCount: society.memberCount,
+          initialAverageRating: society.rating,
+          onMembershipChanged: (joined, count) {
+            setState(() {
+              // update the local _allSocieties list so UI stays in sync
+              _allSocieties = _allSocieties.map((s) {
+                if (s.name == society.name) {
+                  return Society(
+                    name: s.name,
+                    description: s.description,
+                    icon: s.icon,
+                    memberCount: count,
+                    rating: s.rating,
+                    imageUrl: s.imageUrl,
+                  );
+                }
+                return s;
+              }).toList();
+              // also update _currentUser.joinedSocieties when membership changes
+              final js = (_currentUser?['joinedSocieties'] as List?)?.map((e) => e.toString()).toList() ?? [];
+              final names = js.map((e) => e.toLowerCase().trim()).toList();
+              if (joined) {
+                if (!names.contains(society.name.toLowerCase().trim())) {
+                  final newList = [...js, society.name];
+                  _currentUser = {...?_currentUser, 'joinedSocieties': newList};
+                }
+              } else {
+                final newList = js.where((n) => n.toLowerCase().trim() != society.name.toLowerCase().trim()).toList();
+                _currentUser = {...?_currentUser, 'joinedSocieties': newList};
+              }
+            });
+          },
+          onAverageRatingChanged: (rating) {
+            setState(() {
+              _allSocieties = _allSocieties.map((s) {
+                if (s.name == society.name) {
+                  return Society(
+                    name: s.name,
+                    description: s.description,
+                    icon: s.icon,
+                    memberCount: s.memberCount,
+                    rating: rating,
+                    imageUrl: s.imageUrl,
+                  );
+                }
+                return s;
+              }).toList();
+            });
+          },
+        ),
       ),
     );
   }
@@ -256,6 +432,167 @@ class _HomePageState extends State<HomePage> {
                 ).textTheme.bodyMedium?.copyWith(height: 1.35),
               ),
               const SizedBox(height: 14),
+              // Joined societies quick access
+              if (_currentUser != null) ...[
+                const SizedBox(height: 8),
+                Builder(builder: (context) {
+                    final joinedNames = (_currentUser!['joinedSocieties'] as List?)
+                        ?.map((e) => e.toString().toLowerCase().trim())
+                        .toSet() ??
+                      <String>{};
+                    final joined = _allSocieties
+                      .where((s) => joinedNames.contains(s.name.toLowerCase().trim()))
+                      .toList();
+
+                  if (joined.isEmpty) {
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'You haven\'t joined any societies yet',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Tap "Find societies" to browse and join groups.',
+                                    style: TextStyle(color: Colors.grey.shade700),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _openSocietiesPage,
+                              child: const Text('Find societies'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your societies',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 110,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: joined.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final s = joined[index];
+                            return InkWell(
+                              onTap: () => _navigateToSocietyDetails(s, initialJoined: true),
+                              child: SizedBox(
+                                width: 220,
+                                child: Card(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 28,
+                                          child: Icon(s.icon, size: 28),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                s.name,
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.w700),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                '${s.memberCount} members · ${s.rating} ★',
+                                                style: TextStyle(
+                                                    color:
+                                                        Colors.grey.shade700),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  );
+                }),
+              ],
+              // Prompt when not signed in
+              if (_currentUser == null) ...[
+                const SizedBox(height: 8),
+                Card(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.login),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Sign in to see your societies',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Create an account or sign in to quickly access societies you\'ve joined.',
+                                style: TextStyle(color: Colors.grey.shade700),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _openAuthPage,
+                          child: const Text('Sign in'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Align(
                 alignment: Alignment.centerLeft,
                 child: ElevatedButton.icon(
@@ -288,20 +625,6 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 10),
               const SizedBox(height: 350, child: HeroCarousel()),
               const SizedBox(height: 18),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: _openAuthPage,
-                  icon: const Icon(Icons.login),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
-                  label: const Text('Join a society today'),
-                ),
-              ),
             ],
           ),
         ),
