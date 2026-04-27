@@ -492,142 +492,176 @@ class _SocietiesPageState extends State<SocietiesPage> {
           Expanded(
             child: _filteredSocieties.isEmpty
                 ? _EmptySocietyState(onReset: _resetFilters)
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                    itemCount: _filteredSocieties.length,
-                    itemBuilder: (context, index) {
-                      final society = _filteredSocieties[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => SocietyDetailsPage(
-                                  name: society.name,
-                                  description: society.description,
-                                  imageUrl: society.imageUrl,
-                                  icon: society.icon,
-                                  userEmail: widget.userEmail,
-                                  userAuthToken: widget.userAuthToken,
-                                  initialJoined: society.joined,
-                                  initialMemberCount: society.memberCount,
-                                  initialAverageRating: society.averageRating,
-                                  onMembershipChanged: (joined, count) {
-                                    _updateSocietyFromDetails(
-                                      societyName: society.name,
-                                      joined: joined,
-                                      memberCount: count,
-                                    );
-                                  },
-                                  onAverageRatingChanged: (rating) {
-                                    _updateSocietyFromDetails(
-                                      societyName: society.name,
-                                      averageRating: rating,
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(
-                                height: 140,
-                                child: Image.network(
-                                  society.imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withOpacity(0.15),
-                                    child: Icon(
-                                      society.icon,
-                                      size: 60,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double width = constraints.maxWidth;
+                      final int columns = width < 420
+                          ? 1
+                          : width < 900
+                          ? 2
+                          : width < 1200
+                          ? 3
+                          : 4;
+
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          mainAxisExtent: 320,
+                        ),
+                        itemCount: _filteredSocieties.length,
+                        itemBuilder: (context, index) {
+                          final society = _filteredSocieties[index];
+                          return Card(
+                            margin: EdgeInsets.zero,
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => SocietyDetailsPage(
+                                      name: society.name,
+                                      description: society.description,
+                                      imageUrl: society.imageUrl,
+                                      icon: society.icon,
+                                      userEmail: widget.userEmail,
+                                      userAuthToken: widget.userAuthToken,
+                                      initialJoined: society.joined,
+                                      initialMemberCount: society.memberCount,
+                                      initialAverageRating:
+                                          society.averageRating,
+                                      onMembershipChanged: (joined, count) {
+                                        _updateSocietyFromDetails(
+                                          societyName: society.name,
+                                          joined: joined,
+                                          memberCount: count,
+                                        );
+                                      },
+                                      onAverageRatingChanged: (rating) {
+                                        _updateSocietyFromDetails(
+                                          societyName: society.name,
+                                          averageRating: rating,
+                                        );
+                                      },
                                     ),
                                   ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            society.name,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
+                                );
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(
+                                    height: 140,
+                                    child: Image.network(
+                                      society.imageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary.withOpacity(0.15),
+                                        child: Icon(
+                                          society.icon,
+                                          size: 60,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  society.name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
                                                 ),
-                                          ),
-                                        ),
-                                        if (society.joined)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.shade100,
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                            child: Text(
-                                              'Joined',
-                                              style: TextStyle(
-                                                color: Colors.green.shade800,
-                                                fontWeight: FontWeight.w600,
                                               ),
-                                            ),
+                                              if (society.joined)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        Colors.green.shade100,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          999,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    'Joined',
+                                                    style: TextStyle(
+                                                      color:
+                                                          Colors.green.shade800,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
-                                      ],
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            society.description,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: [
+                                              _MetaPill(
+                                                icon: Icons.category,
+                                                text: society.category,
+                                              ),
+                                              _MetaPill(
+                                                icon: Icons.people,
+                                                text:
+                                                    '${society.memberCount} members',
+                                              ),
+                                              _MetaPill(
+                                                icon: Icons.star,
+                                                text: society.averageRating
+                                                    .toStringAsFixed(1),
+                                              ),
+                                            ],
+                                          ),
+                                          const Spacer(),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      society.description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        _MetaPill(
-                                          icon: Icons.category,
-                                          text: society.category,
-                                        ),
-                                        _MetaPill(
-                                          icon: Icons.people,
-                                          text:
-                                              '${society.memberCount} members',
-                                        ),
-                                        _MetaPill(
-                                          icon: Icons.star,
-                                          text: society.averageRating
-                                              .toStringAsFixed(1),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
