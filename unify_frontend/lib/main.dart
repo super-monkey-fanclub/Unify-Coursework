@@ -564,7 +564,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(height: 8),
                         SizedBox(
-                          height: 110,
+                          height: 140,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: joined.length,
@@ -580,6 +580,7 @@ class _HomePageState extends State<HomePage> {
                                 child: SizedBox(
                                   width: 220,
                                   child: Card(
+                                    clipBehavior: Clip.antiAlias,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -610,6 +611,8 @@ class _HomePageState extends State<HomePage> {
                                                 const SizedBox(height: 6),
                                                 Text(
                                                   '${s.memberCount} members · ${s.rating} ★',
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
                                                   style: TextStyle(
                                                     color: Colors.grey.shade700,
                                                   ),
