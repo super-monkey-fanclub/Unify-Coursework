@@ -1425,13 +1425,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
             foregroundColor: Colors.white,
             iconTheme: const IconThemeData(color: Colors.white),
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                widget.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
               background: Image.network(
                 widget.imageUrl,
                 fit: BoxFit.cover,
