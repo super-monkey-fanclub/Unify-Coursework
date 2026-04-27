@@ -11,7 +11,7 @@ enum SocietySortOption {
   ratingHighLow,
 }
 
-enum SocietyRatingFilter { any, atLeastThree, atLeastFour }
+enum SocietyRatingFilter { any, atLeastOne, atLeastTwo, atLeastThree, atLeastFour }
 
 class SocietySummary {
   final String name;
@@ -93,6 +93,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
     } else {
       _applyFilters();
     }
+    // Refresh live average ratings from backend when available
+    unawaited(_refreshAverages());
   }
 
   @override
@@ -112,7 +114,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
         icon: Icons.palette,
         memberCount: 82,
-        averageRating: 4.6,
+        averageRating: 3.6,
       ),
       SocietySummary(
         name: 'Anime Society',
@@ -122,7 +124,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
         icon: Icons.tv,
         memberCount: 101,
-        averageRating: 4.2,
+        averageRating: 4.1,
       ),
       SocietySummary(
         name: 'Gaming Society',
@@ -132,7 +134,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
         icon: Icons.sports_esports,
         memberCount: 174,
-        averageRating: 4.8,
+        averageRating: 4.1,
       ),
       SocietySummary(
         name: 'Music Society',
@@ -142,7 +144,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
         icon: Icons.music_note,
         memberCount: 93,
-        averageRating: 4.4,
+        averageRating: 4.0,
       ),
       SocietySummary(
         name: 'Photography Club',
@@ -169,11 +171,11 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Drama Club',
         description: 'Acting workshops, productions, and backstage roles.',
         category: 'Performance',
-        imageUrl:
-            'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
+          imageUrl:
+            'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.theater_comedy,
         memberCount: 59,
-        averageRating: 3.9,
+        averageRating: 1.8,
       ),
       SocietySummary(
         name: 'Coding Society',
@@ -194,6 +196,56 @@ class _SocietiesPageState extends State<SocietiesPage> {
         icon: Icons.precision_manufacturing,
         memberCount: 48,
         averageRating: 4.3,
+      ),
+      SocietySummary(
+        name: 'Environmental Club',
+        description: 'Campus green projects, cleanups and sustainability events.',
+        category: 'Community',
+        imageUrl:
+            'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
+        icon: Icons.eco,
+        memberCount: 56,
+        averageRating: 3.8,
+      ),
+      SocietySummary(
+        name: 'Film Society',
+        description: 'Screenings, discussions and filmmaking workshops.',
+        category: 'Creative',
+          imageUrl:
+            'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        icon: Icons.movie,
+        memberCount: 72,
+        averageRating: 4.1,
+      ),
+      SocietySummary(
+        name: 'Chess Club',
+        description: 'Casual and competitive chess sessions and tournaments.',
+        category: 'Games',
+          imageUrl:
+            'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        icon: Icons.sports_esports,
+        memberCount: 34,
+        averageRating: 2.2,
+      ),
+      SocietySummary(
+        name: 'Cooking Society',
+        description: 'Learn new recipes, cook together and share meals.',
+        category: 'Lifestyle',
+        imageUrl:
+            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop',
+        icon: Icons.restaurant,
+        memberCount: 88,
+        averageRating: 4.0,
+      ),
+      SocietySummary(
+        name: 'Entrepreneurship Society',
+        description: 'Startups, pitch nights and networking for student founders.',
+        category: 'Professional',
+        imageUrl:
+            'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
+        icon: Icons.lightbulb,
+        memberCount: 64,
+        averageRating: 3.7,
       ),
     ];
   }
@@ -222,6 +274,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
       _applyFilters();
     }
 
+    // When memberships synced, also refresh live averages
+    unawaited(_refreshAverages());
+
     if (mounted) {
       setState(() {
         _loadingMembership = false;
@@ -242,6 +297,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
 
       final double minRating = switch (_ratingFilter) {
         SocietyRatingFilter.any => 0,
+        SocietyRatingFilter.atLeastOne => 1,
+        SocietyRatingFilter.atLeastTwo => 2,
         SocietyRatingFilter.atLeastThree => 3,
         SocietyRatingFilter.atLeastFour => 4,
       };
@@ -268,6 +325,35 @@ class _SocietiesPageState extends State<SocietiesPage> {
     setState(() {
       _filteredSocieties = next;
     });
+  }
+
+  Future<void> _refreshAverages() async {
+    try {
+      final futures = _allSocieties.map((society) async {
+        final res = await _societyService.getReviews(societyName: society.name);
+        if (res['success'] == true) {
+          final List<dynamic> raw = res['reviews'] as List<dynamic>? ?? [];
+          if (raw.isNotEmpty) {
+            final ratings = raw
+                .map((m) => ((m as Map<String, dynamic>)['rating'] as num?)?.toDouble() ?? 0.0)
+                .toList();
+            final double avg = ratings.reduce((a, b) => a + b) / ratings.length;
+            final double rounded = double.parse(avg.toStringAsFixed(1));
+            return society.copyWith(averageRating: rounded);
+          }
+        }
+        return society;
+      }).toList();
+
+      final updated = await Future.wait(futures);
+      if (!mounted) return;
+      setState(() {
+        _allSocieties = updated;
+      });
+      _applyFilters();
+    } catch (_) {
+      // Silently ignore network errors — keep seeded values
+    }
   }
 
   void _resetFilters() {
@@ -304,6 +390,10 @@ class _SocietiesPageState extends State<SocietiesPage> {
     switch (filter) {
       case SocietyRatingFilter.any:
         return 'Any';
+      case SocietyRatingFilter.atLeastOne:
+        return '1.0+';
+      case SocietyRatingFilter.atLeastTwo:
+        return '2.0+';
       case SocietyRatingFilter.atLeastThree:
         return '3.0+';
       case SocietyRatingFilter.atLeastFour:
@@ -492,142 +582,176 @@ class _SocietiesPageState extends State<SocietiesPage> {
           Expanded(
             child: _filteredSocieties.isEmpty
                 ? _EmptySocietyState(onReset: _resetFilters)
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                    itemCount: _filteredSocieties.length,
-                    itemBuilder: (context, index) {
-                      final society = _filteredSocieties[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => SocietyDetailsPage(
-                                  name: society.name,
-                                  description: society.description,
-                                  imageUrl: society.imageUrl,
-                                  icon: society.icon,
-                                  userEmail: widget.userEmail,
-                                  userAuthToken: widget.userAuthToken,
-                                  initialJoined: society.joined,
-                                  initialMemberCount: society.memberCount,
-                                  initialAverageRating: society.averageRating,
-                                  onMembershipChanged: (joined, count) {
-                                    _updateSocietyFromDetails(
-                                      societyName: society.name,
-                                      joined: joined,
-                                      memberCount: count,
-                                    );
-                                  },
-                                  onAverageRatingChanged: (rating) {
-                                    _updateSocietyFromDetails(
-                                      societyName: society.name,
-                                      averageRating: rating,
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(
-                                height: 140,
-                                child: Image.network(
-                                  society.imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withOpacity(0.15),
-                                    child: Icon(
-                                      society.icon,
-                                      size: 60,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double width = constraints.maxWidth;
+                      final int columns = width < 420
+                          ? 1
+                          : width < 900
+                          ? 2
+                          : width < 1200
+                          ? 3
+                          : 4;
+
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          mainAxisExtent: 320,
+                        ),
+                        itemCount: _filteredSocieties.length,
+                        itemBuilder: (context, index) {
+                          final society = _filteredSocieties[index];
+                          return Card(
+                            margin: EdgeInsets.zero,
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => SocietyDetailsPage(
+                                      name: society.name,
+                                      description: society.description,
+                                      imageUrl: society.imageUrl,
+                                      icon: society.icon,
+                                      userEmail: widget.userEmail,
+                                      userAuthToken: widget.userAuthToken,
+                                      initialJoined: society.joined,
+                                      initialMemberCount: society.memberCount,
+                                      initialAverageRating:
+                                          society.averageRating,
+                                      onMembershipChanged: (joined, count) {
+                                        _updateSocietyFromDetails(
+                                          societyName: society.name,
+                                          joined: joined,
+                                          memberCount: count,
+                                        );
+                                      },
+                                      onAverageRatingChanged: (rating) {
+                                        _updateSocietyFromDetails(
+                                          societyName: society.name,
+                                          averageRating: rating,
+                                        );
+                                      },
                                     ),
                                   ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            society.name,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
+                                );
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(
+                                    height: 140,
+                                    child: Image.network(
+                                      society.imageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary.withOpacity(0.15),
+                                        child: Icon(
+                                          society.icon,
+                                          size: 60,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  society.name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
                                                 ),
-                                          ),
-                                        ),
-                                        if (society.joined)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.shade100,
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                            child: Text(
-                                              'Joined',
-                                              style: TextStyle(
-                                                color: Colors.green.shade800,
-                                                fontWeight: FontWeight.w600,
                                               ),
-                                            ),
+                                              if (society.joined)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        Colors.green.shade100,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          999,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    'Joined',
+                                                    style: TextStyle(
+                                                      color:
+                                                          Colors.green.shade800,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
-                                      ],
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            society.description,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: [
+                                              _MetaPill(
+                                                icon: Icons.category,
+                                                text: society.category,
+                                              ),
+                                              _MetaPill(
+                                                icon: Icons.people,
+                                                text:
+                                                    '${society.memberCount} members',
+                                              ),
+                                              _MetaPill(
+                                                icon: Icons.star,
+                                                text: society.averageRating
+                                                    .toStringAsFixed(1),
+                                              ),
+                                            ],
+                                          ),
+                                          const Spacer(),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      society.description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        _MetaPill(
-                                          icon: Icons.category,
-                                          text: society.category,
-                                        ),
-                                        _MetaPill(
-                                          icon: Icons.people,
-                                          text:
-                                              '${society.memberCount} members',
-                                        ),
-                                        _MetaPill(
-                                          icon: Icons.star,
-                                          text: society.averageRating
-                                              .toStringAsFixed(1),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -897,6 +1021,493 @@ class SocietyReview {
 
 enum ReviewSortOption { latest, rating, popularity }
 
+// Mock seeded reviews used when the backend has no reviews (local/demo mode).
+final Map<String, List<Map<String, dynamic>>> _seededReviewsData = {
+  'Art Society': [
+    {
+      'id': 1,
+      'author': 'alice@example.com',
+      'author_display_name': 'Alice*',
+      'rating': 5,
+      'comment': 'Fantastic workshops and welcoming members.',
+      'likes': 4,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 2,
+      'author': 'ben@example.com',
+      'author_display_name': 'Ben*',
+      'rating': 4,
+      'comment': 'Great tutors but sometimes crowded.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 3,
+      'author': 'cara@example.com',
+      'author_display_name': 'Cara*',
+      'rating': 4,
+      'comment': 'Lovely community and useful resources.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 4,
+      'author': 'dave@example.com',
+      'author_display_name': 'Dave*',
+      'rating': 3,
+      'comment': 'Good overall, could use more crit nights.',
+      'likes': 0,
+      'dislikes': 1,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Drama Club': [
+    {
+      'id': 35,
+      'author': 'paula@example.com',
+      'author_display_name': 'Paula*',
+      'rating': 1,
+      'comment': 'Shows can be hit-or-miss.',
+      'likes': 0,
+      'dislikes': 1,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 36,
+      'author': 'quentin@example.com',
+      'author_display_name': 'Quentin*',
+      'rating': 2,
+      'comment': 'Friendly group but needs better rehearsal space.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 37,
+      'author': 'rachel@example.com',
+      'author_display_name': 'Rachel*',
+      'rating': 2,
+      'comment': 'Good opportunities but inconsistent scheduling.',
+      'likes': 0,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 38,
+      'author': 'steve@example.com',
+      'author_display_name': 'Steve*',
+      'rating': 2,
+      'comment': 'Nice people; performances need polishing.',
+      'likes': 0,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Anime Society': [
+    {
+      'id': 11,
+      'author': 'emma@example.com',
+      'author_display_name': 'Emma*',
+      'rating': 5,
+      'comment': 'Perfect screenings and friendly people.',
+      'likes': 6,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 12,
+      'author': 'frank@example.com',
+      'author_display_name': 'Frank*',
+      'rating': 2,
+      'comment': 'Too noisy for me at times.',
+      'likes': 0,
+      'dislikes': 2,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 13,
+      'author': 'gina@example.com',
+      'author_display_name': 'Gina*',
+      'rating': 4,
+      'comment': 'Nice selection of shows.',
+      'likes': 3,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 14,
+      'author': 'harry@example.com',
+      'author_display_name': 'Harry*',
+      'rating': 3,
+      'comment': 'Good events but limited seating.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 15,
+      'author': 'ivy@example.com',
+      'author_display_name': 'Ivy*',
+      'rating': 5,
+      'comment': 'Loved the cosplay meet-up!',
+      'likes': 4,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Gaming Society': [
+    {
+      'id': 21,
+      'author': 'jack@example.com',
+      'author_display_name': 'Jack*',
+      'rating': 5,
+      'comment': 'Great events and tournaments.',
+      'likes': 8,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 22,
+      'author': 'kate@example.com',
+      'author_display_name': 'Kate*',
+      'rating': 4,
+      'comment': 'Friendly members and good equipment.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 23,
+      'author': 'liam@example.com',
+      'author_display_name': 'Liam*',
+      'rating': 3,
+      'comment': 'Sometimes schedules clash with classes.',
+      'likes': 1,
+      'dislikes': 1,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 24,
+      'author': 'mona@example.com',
+      'author_display_name': 'Mona*',
+      'rating': 4,
+      'comment': 'Good variety of games.',
+      'likes': 3,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Music Society': [
+    {
+      'id': 31,
+      'author': 'nora@example.com',
+      'author_display_name': 'Nora*',
+      'rating': 5,
+      'comment': 'Fantastic concerts and rehearsals.',
+      'likes': 5,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 32,
+      'author': 'oliver@example.com',
+      'author_display_name': 'Oliver*',
+      'rating': 4,
+      'comment': 'Helpful for improving skills.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 33,
+      'author': 'paul@example.com',
+      'author_display_name': 'Paul*',
+      'rating': 2,
+      'comment': 'Needs better instrument availability.',
+      'likes': 0,
+      'dislikes': 2,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 34,
+      'author': 'queenie@example.com',
+      'author_display_name': 'Queenie*',
+      'rating': 4,
+      'comment': 'Great community performances.',
+      'likes': 3,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  // Additional new societies with varied reviews
+  'Environmental Club': [
+    {
+      'id': 41,
+      'author': 'rita@example.com',
+      'author_display_name': 'Rita*',
+      'rating': 4,
+      'comment': 'Love the beach cleanups.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 42,
+      'author': 'sam@example.com',
+      'author_display_name': 'Sam*',
+      'rating': 3,
+      'comment': 'Good aims but could be better organised.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 43,
+      'author': 'tina@example.com',
+      'author_display_name': 'Tina*',
+      'rating': 5,
+      'comment': 'Informative workshops and lovely people.',
+      'likes': 3,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 44,
+      'author': 'umar@example.com',
+      'author_display_name': 'Umar*',
+      'rating': 4,
+      'comment': 'Practical and impactful projects.',
+      'likes': 0,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 45,
+      'author': 'vicky@example.com',
+      'author_display_name': 'Vicky*',
+      'rating': 3,
+      'comment': 'Times could suit students better.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Film Society': [
+    {
+      'id': 51,
+      'author': 'will@example.com',
+      'author_display_name': 'Will*',
+      'rating': 5,
+      'comment': 'Excellent curation of films.',
+      'likes': 4,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 52,
+      'author': 'xena@example.com',
+      'author_display_name': 'Xena*',
+      'rating': 4,
+      'comment': 'Good discussions afterwards.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 53,
+      'author': 'yara@example.com',
+      'author_display_name': 'Yara*',
+      'rating': 3,
+      'comment': 'Venue could be more comfortable.',
+      'likes': 0,
+      'dislikes': 1,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 54,
+      'author': 'zane@example.com',
+      'author_display_name': 'Zane*',
+      'rating': 4,
+      'comment': 'Friendly and passionate members.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Chess Club': [
+    {
+      'id': 61,
+      'author': 'adam@example.com',
+      'author_display_name': 'Adam*',
+      'rating': 2,
+      'comment': 'Great practice partners.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 62,
+      'author': 'bella@example.com',
+      'author_display_name': 'Bella*',
+      'rating': 2,
+      'comment': 'Friendly but could use coaching sessions.',
+      'likes': 0,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 63,
+      'author': 'carl@example.com',
+      'author_display_name': 'Carl*',
+      'rating': 2,
+      'comment': 'Well organised tournaments.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 64,
+      'author': 'dina@example.com',
+      'author_display_name': 'Dina*',
+      'rating': 3,
+      'comment': 'Meet times clash with lectures sometimes.',
+      'likes': 0,
+      'dislikes': 2,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Cooking Society': [
+    {
+      'id': 71,
+      'author': 'ellen@example.com',
+      'author_display_name': 'Ellen*',
+      'rating': 5,
+      'comment': 'Loved the international cuisine nights.',
+      'likes': 5,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 72,
+      'author': 'fred@example.com',
+      'author_display_name': 'Fred*',
+      'rating': 4,
+      'comment': 'Great recipes and practical tips.',
+      'likes': 2,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 73,
+      'author': 'gina2@example.com',
+      'author_display_name': 'Gina2*',
+      'rating': 3,
+      'comment': 'Sometimes short on ingredients.',
+      'likes': 0,
+      'dislikes': 1,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 74,
+      'author': 'hugo@example.com',
+      'author_display_name': 'Hugo*',
+      'rating': 4,
+      'comment': 'Practical, fun and social.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+  'Entrepreneurship Society': [
+    {
+      'id': 81,
+      'author': 'iris@example.com',
+      'author_display_name': 'Iris*',
+      'rating': 4,
+      'comment': 'Excellent networking opportunities.',
+      'likes': 3,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 82,
+      'author': 'john@example.com',
+      'author_display_name': 'John*',
+      'rating': 3,
+      'comment': 'Good speakers but needs more workshops.',
+      'likes': 1,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 83,
+      'author': 'kira@example.com',
+      'author_display_name': 'Kira*',
+      'rating': 5,
+      'comment': 'Loved the pitch nights.',
+      'likes': 4,
+      'dislikes': 0,
+      'user_reaction': null,
+      'can_react': true,
+    },
+    {
+      'id': 84,
+      'author': 'leo@example.com',
+      'author_display_name': 'Leo*',
+      'rating': 2,
+      'comment': 'Not enough hands-on mentoring.',
+      'likes': 0,
+      'dislikes': 2,
+      'user_reaction': null,
+      'can_react': true,
+    },
+  ],
+};
+
 class SocietyDetailsPage extends StatefulWidget {
   final String name;
   final String description;
@@ -1000,12 +1611,33 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     );
     if (!mounted) return;
 
-    if (result['success'] == true) {
-      final List<dynamic> raw = result['reviews'] as List<dynamic>? ?? [];
-      final List<SocietyReview> reviews = raw
-          .map((e) => e as Map<String, dynamic>)
-          .map(
-            (m) => SocietyReview(
+    // Prefer backend reviews; fall back to seeded mock reviews when empty/unavailable
+    final List<dynamic> rawFromBackend =
+        (result['success'] == true) ? (result['reviews'] as List<dynamic>? ?? []) : [];
+
+    List<Map<String, dynamic>> rawMaps = rawFromBackend
+        .map((e) => e as Map<String, dynamic>)
+        .toList(growable: true);
+
+    if (rawMaps.isEmpty) {
+      final seeded = _seededReviewsData[widget.name];
+      if (seeded != null && seeded.isNotEmpty) {
+        rawMaps = List<Map<String, dynamic>>.from(seeded);
+      }
+    }
+
+    if (rawMaps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Could not load reviews.',
+          ),
+        ),
+      );
+    }
+
+    final List<SocietyReview> reviews = rawMaps
+        .map((m) => SocietyReview(
               id: (m['id'] as int?) ?? 0,
               author: (m['author'] as String?) ?? 'Anonymous',
               authorDisplayName:
@@ -1020,35 +1652,23 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                   (m['admin_response'] as Map<String, dynamic>?)?['text']
                       as String?,
               adminResponderName:
-                  (m['admin_response']
-                          as Map<String, dynamic>?)?['admin_display_name']
-                      as String?,
-            ),
-          )
-          .toList();
+                  (m['admin_response'] as Map<String, dynamic>?)
+                      ?['admin_display_name'] as String?,
+            ))
+        .toList();
 
-      final double average = reviews.isEmpty
-          ? _averageRating
-          : reviews.map((r) => r.rating).reduce((a, b) => a + b) /
-                reviews.length;
+    final double average = reviews.isEmpty
+        ? _averageRating
+        : reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
 
-      setState(() {
-        _reviews = reviews;
-        _averageRating = average;
-        _isAdminViewer = result['viewer_is_admin'] == true;
-        _canCreateReview = result['can_create_review'] == true;
-        _reviewBlockReason = result['review_block_reason']?.toString();
-      });
-      widget.onAverageRatingChanged?.call(_averageRating);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not load reviews.',
-          ),
-        ),
-      );
-    }
+    setState(() {
+      _reviews = reviews;
+      _averageRating = average;
+      _isAdminViewer = result['viewer_is_admin'] == true;
+      _canCreateReview = result['can_create_review'] == true;
+      _reviewBlockReason = result['review_block_reason']?.toString();
+    });
+    widget.onAverageRatingChanged?.call(_averageRating);
 
     if (mounted) {
       setState(() {
@@ -1391,13 +2011,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
             foregroundColor: Colors.white,
             iconTheme: const IconThemeData(color: Colors.white),
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                widget.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
               background: Image.network(
                 widget.imageUrl,
                 fit: BoxFit.cover,
