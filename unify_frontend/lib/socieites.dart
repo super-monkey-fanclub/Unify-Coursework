@@ -93,6 +93,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
     } else {
       _applyFilters();
     }
+    // Refresh live average ratings from backend when available
+    unawaited(_refreshAverages());
   }
 
   @override
@@ -112,7 +114,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
         icon: Icons.palette,
         memberCount: 82,
-        averageRating: 4.6,
+        averageRating: 3.6,
       ),
       SocietySummary(
         name: 'Anime Society',
@@ -122,7 +124,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
         icon: Icons.tv,
         memberCount: 101,
-        averageRating: 4.2,
+        averageRating: 4.1,
       ),
       SocietySummary(
         name: 'Gaming Society',
@@ -132,7 +134,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
         icon: Icons.sports_esports,
         memberCount: 174,
-        averageRating: 4.8,
+        averageRating: 4.1,
       ),
       SocietySummary(
         name: 'Music Society',
@@ -142,7 +144,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
         icon: Icons.music_note,
         memberCount: 93,
-        averageRating: 4.4,
+        averageRating: 4.0,
       ),
       SocietySummary(
         name: 'Photography Club',
@@ -272,6 +274,9 @@ class _SocietiesPageState extends State<SocietiesPage> {
       _applyFilters();
     }
 
+    // When memberships synced, also refresh live averages
+    unawaited(_refreshAverages());
+
     if (mounted) {
       setState(() {
         _loadingMembership = false;
@@ -320,6 +325,35 @@ class _SocietiesPageState extends State<SocietiesPage> {
     setState(() {
       _filteredSocieties = next;
     });
+  }
+
+  Future<void> _refreshAverages() async {
+    try {
+      final futures = _allSocieties.map((society) async {
+        final res = await _societyService.getReviews(societyName: society.name);
+        if (res['success'] == true) {
+          final List<dynamic> raw = res['reviews'] as List<dynamic>? ?? [];
+          if (raw.isNotEmpty) {
+            final ratings = raw
+                .map((m) => ((m as Map<String, dynamic>)['rating'] as num?)?.toDouble() ?? 0.0)
+                .toList();
+            final double avg = ratings.reduce((a, b) => a + b) / ratings.length;
+            final double rounded = double.parse(avg.toStringAsFixed(1));
+            return society.copyWith(averageRating: rounded);
+          }
+        }
+        return society;
+      }).toList();
+
+      final updated = await Future.wait(futures);
+      if (!mounted) return;
+      setState(() {
+        _allSocieties = updated;
+      });
+      _applyFilters();
+    } catch (_) {
+      // Silently ignore network errors — keep seeded values
+    }
   }
 
   void _resetFilters() {

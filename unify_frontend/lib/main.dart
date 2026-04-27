@@ -65,7 +65,7 @@ class _HomePageState extends State<HomePage> {
           'A friendly society for drawing, painting, and creative workshops.',
       icon: Icons.palette,
       memberCount: 82,
-      rating: 4.6,
+      rating: 4.0,
       imageUrl:
           'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
     ),
@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
       description: 'Weekly anime screenings and socials for all fans.',
       icon: Icons.tv,
       memberCount: 101,
-      rating: 4.2,
+      rating: 3.8,
       imageUrl:
           'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
     ),
@@ -83,7 +83,7 @@ class _HomePageState extends State<HomePage> {
       description: 'Casual and competitive gaming events across many genres.',
       icon: Icons.sports_esports,
       memberCount: 174,
-      rating: 4.8,
+      rating: 4.0,
       imageUrl:
           'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
     ),
@@ -92,7 +92,7 @@ class _HomePageState extends State<HomePage> {
       description: 'Jam sessions, open mics, and opportunities to perform.',
       icon: Icons.music_note,
       memberCount: 93,
-      rating: 4.4,
+      rating: 3.8,
       imageUrl:
           'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
     ),
@@ -121,7 +121,7 @@ class _HomePageState extends State<HomePage> {
       memberCount: 59,
       rating: 1.8,
             imageUrl:
-              'https://source.unsplash.com/photos/hyY5Mc04MuY/800x450',
+              'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     ),
     Society(
       name: 'Coding Society',
@@ -155,9 +155,9 @@ class _HomePageState extends State<HomePage> {
       description: 'Screenings, discussions and filmmaking workshops.',
       icon: Icons.movie,
       memberCount: 72,
-      rating: 4.1,
+      rating: 4.0,
       imageUrl:
-        'https://source.unsplash.com/photos/mNen3xP4wXA/800x450',
+        'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     ),
     Society(
       name: 'Chess Club',
@@ -166,7 +166,7 @@ class _HomePageState extends State<HomePage> {
       memberCount: 34,
       rating: 2.2,
       imageUrl:
-        'https://source.unsplash.com/photos/hayc4n2dI-k/800x450',
+        'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     ),
     Society(
       name: 'Cooking Society',
@@ -197,6 +197,42 @@ class _HomePageState extends State<HomePage> {
     _filteredItems = List.from(_placeholderItems);
     _searchController.addListener(_onSearchChanged);
     _restoreSession();
+    // Refresh live ratings from backend
+    unawaited(_refreshSocietyRatings());
+  }
+
+  Future<void> _refreshSocietyRatings() async {
+    try {
+      final futures = _allSocieties.map((s) async {
+        final res = await _societyService.getReviews(societyName: s.name);
+        if (res['success'] == true) {
+          final List<dynamic> raw = res['reviews'] as List<dynamic>? ?? [];
+          if (raw.isNotEmpty) {
+            final ratings = raw
+                .map((m) => ((m as Map<String, dynamic>)['rating'] as num?)?.toDouble() ?? 0.0)
+                .toList();
+            final double avg = ratings.reduce((a, b) => a + b) / ratings.length;
+            return Society(
+              name: s.name,
+              description: s.description,
+              icon: s.icon,
+              memberCount: s.memberCount,
+              rating: avg,
+              imageUrl: s.imageUrl,
+            );
+          }
+        }
+        return s;
+      }).toList();
+
+      final updated = await Future.wait(futures);
+      if (!mounted) return;
+      setState(() {
+        _allSocieties = updated;
+      });
+    } catch (_) {
+      // ignore network errors; keep seeded values
+    }
   }
 
   Future<void> _restoreSession() async {
@@ -1143,7 +1179,7 @@ class SocietyCard extends StatelessWidget {
                           const Icon(Icons.star, color: Colors.amber, size: 24),
                           const SizedBox(width: 8),
                           Text(
-                            society.rating.toString(),
+                            society.rating.toStringAsFixed(1),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
