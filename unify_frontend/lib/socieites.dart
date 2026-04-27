@@ -1968,6 +1968,118 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
+  String _monthLabel(String monthKey) {
+    final parts = monthKey.split('-');
+    if (parts.length != 2) return monthKey;
+
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    if (year == null || month == null || month < 1 || month > 12) {
+      return monthKey;
+    }
+
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${names[month - 1]} $year';
+  }
+
+  Future<void> _showReviewAnalyticsDialog() async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in as an admin to view analytics.'),
+        ),
+      );
+      return;
+    }
+
+    final result = await _societyService.getReviewAnalytics(
+      societyName: widget.name,
+      viewerEmail: email,
+      authToken: widget.userAuthToken,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'Could not load review analytics.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final List<dynamic> raw = result['trends'] as List<dynamic>? ?? [];
+    final trends = raw
+        .map((item) => item as Map<String, dynamic>)
+        .toList(growable: false);
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Monthly Review Trends'),
+        content: SizedBox(
+          width: 420,
+          child: trends.isEmpty
+              ? const Text('No review data available yet for this society.')
+              : SingleChildScrollView(
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Month')),
+                      DataColumn(label: Text('Avg Rating')),
+                      DataColumn(label: Text('Reviews')),
+                    ],
+                    rows: trends
+                        .map(
+                          (trend) => DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  _monthLabel(trend['month']?.toString() ?? ''),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  (trend['avg_rating'] as num? ?? 0)
+                                      .toStringAsFixed(1),
+                                ),
+                              ),
+                              DataCell(
+                                Text('${trend['review_count'] ?? 0}'),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openNotificationsPage() {
     if (!_joined) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2073,6 +2185,41 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                       ),
                     ),
                   ),
+                  if (_isAdminViewer) ...[
+                    const SizedBox(height: 12),
+                    Card(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withOpacity(0.45),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Admin tools',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Quick access to review trends for this society.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: _showReviewAnalyticsDialog,
+                              icon: const Icon(Icons.insights_outlined),
+                              label: const Text('View review analytics'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed: _toggleJoin,
@@ -2089,7 +2236,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                   OutlinedButton.icon(
                     onPressed: _joined ? _openNotificationsPage : null,
                     icon: const Icon(Icons.notifications_active_outlined),
-                    label: const Text('Events & Polls'),
+                    label: const Text('Open events & polls'),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
