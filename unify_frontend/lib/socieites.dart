@@ -11,7 +11,13 @@ enum SocietySortOption {
   ratingHighLow,
 }
 
-enum SocietyRatingFilter { any, atLeastOne, atLeastTwo, atLeastThree, atLeastFour }
+enum SocietyRatingFilter {
+  any,
+  atLeastOne,
+  atLeastTwo,
+  atLeastThree,
+  atLeastFour,
+}
 
 class SocietySummary {
   final String name;
@@ -171,7 +177,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Drama Club',
         description: 'Acting workshops, productions, and backstage roles.',
         category: 'Performance',
-          imageUrl:
+        imageUrl:
             'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.theater_comedy,
         memberCount: 59,
@@ -199,7 +205,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
       ),
       SocietySummary(
         name: 'Environmental Club',
-        description: 'Campus green projects, cleanups and sustainability events.',
+        description:
+            'Campus green projects, cleanups and sustainability events.',
         category: 'Community',
         imageUrl:
             'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
@@ -211,7 +218,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Film Society',
         description: 'Screenings, discussions and filmmaking workshops.',
         category: 'Creative',
-          imageUrl:
+        imageUrl:
             'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.movie,
         memberCount: 72,
@@ -221,7 +228,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Chess Club',
         description: 'Casual and competitive chess sessions and tournaments.',
         category: 'Games',
-          imageUrl:
+        imageUrl:
             'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.sports_esports,
         memberCount: 34,
@@ -239,7 +246,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
       ),
       SocietySummary(
         name: 'Entrepreneurship Society',
-        description: 'Startups, pitch nights and networking for student founders.',
+        description:
+            'Startups, pitch nights and networking for student founders.',
         category: 'Professional',
         imageUrl:
             'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
@@ -335,7 +343,12 @@ class _SocietiesPageState extends State<SocietiesPage> {
           final List<dynamic> raw = res['reviews'] as List<dynamic>? ?? [];
           if (raw.isNotEmpty) {
             final ratings = raw
-                .map((m) => ((m as Map<String, dynamic>)['rating'] as num?)?.toDouble() ?? 0.0)
+                .map(
+                  (m) =>
+                      ((m as Map<String, dynamic>)['rating'] as num?)
+                          ?.toDouble() ??
+                      0.0,
+                )
                 .toList();
             final double avg = ratings.reduce((a, b) => a + b) / ratings.length;
             final double rounded = double.parse(avg.toStringAsFixed(1));
@@ -1612,8 +1625,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
 
     // Prefer backend reviews; fall back to seeded mock reviews when empty/unavailable
-    final List<dynamic> rawFromBackend =
-        (result['success'] == true) ? (result['reviews'] as List<dynamic>? ?? []) : [];
+    final List<dynamic> rawFromBackend = (result['success'] == true)
+        ? (result['reviews'] as List<dynamic>? ?? [])
+        : [];
 
     List<Map<String, dynamic>> rawMaps = rawFromBackend
         .map((e) => e as Map<String, dynamic>)
@@ -1637,24 +1651,27 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
 
     final List<SocietyReview> reviews = rawMaps
-        .map((m) => SocietyReview(
-              id: (m['id'] as int?) ?? 0,
-              author: (m['author'] as String?) ?? 'Anonymous',
-              authorDisplayName:
-                  (m['author_display_name'] as String?) ?? 'Anonymous',
-              rating: (m['rating'] as int?) ?? 5,
-              comment: (m['comment'] as String?) ?? '',
-              likes: (m['likes'] as int?) ?? 0,
-              dislikes: (m['dislikes'] as int?) ?? 0,
-              userReaction: m['user_reaction'] as String?,
-              canReact: m['can_react'] == true,
-              adminResponseText:
-                  (m['admin_response'] as Map<String, dynamic>?)?['text']
-                      as String?,
-              adminResponderName:
-                  (m['admin_response'] as Map<String, dynamic>?)
-                      ?['admin_display_name'] as String?,
-            ))
+        .map(
+          (m) => SocietyReview(
+            id: (m['id'] as int?) ?? 0,
+            author: (m['author'] as String?) ?? 'Anonymous',
+            authorDisplayName:
+                (m['author_display_name'] as String?) ?? 'Anonymous',
+            rating: (m['rating'] as int?) ?? 5,
+            comment: (m['comment'] as String?) ?? '',
+            likes: (m['likes'] as int?) ?? 0,
+            dislikes: (m['dislikes'] as int?) ?? 0,
+            userReaction: m['user_reaction'] as String?,
+            canReact: m['can_react'] == true,
+            adminResponseText:
+                (m['admin_response'] as Map<String, dynamic>?)?['text']
+                    as String?,
+            adminResponderName:
+                (m['admin_response']
+                        as Map<String, dynamic>?)?['admin_display_name']
+                    as String?,
+          ),
+        )
         .toList();
 
     final double average = reviews.isEmpty
@@ -2060,9 +2077,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                                       .toStringAsFixed(1),
                                 ),
                               ),
-                              DataCell(
-                                Text('${trend['review_count'] ?? 0}'),
-                              ),
+                              DataCell(Text('${trend['review_count'] ?? 0}')),
                             ],
                           ),
                         )
@@ -2188,10 +2203,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                   if (_isAdminViewer) ...[
                     const SizedBox(height: 12),
                     Card(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withOpacity(0.45),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withOpacity(0.45),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(
@@ -2199,9 +2213,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                           children: [
                             Text(
                               'Admin tools',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4),
