@@ -119,9 +119,9 @@ class _HomePageState extends State<HomePage> {
       description: 'Acting workshops, productions, and backstage roles.',
       icon: Icons.theater_comedy,
       memberCount: 59,
-      rating: 3.9,
-      imageUrl:
-          'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
+      rating: 1.8,
+            imageUrl:
+              'https://source.unsplash.com/photos/hyY5Mc04MuY/800x450',
     ),
     Society(
       name: 'Coding Society',
@@ -140,6 +140,51 @@ class _HomePageState extends State<HomePage> {
       rating: 4.3,
       imageUrl:
           'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Environmental Club',
+      description: 'Campus green projects, cleanups and sustainability events.',
+      icon: Icons.eco,
+      memberCount: 56,
+      rating: 3.8,
+      imageUrl:
+          'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Film Society',
+      description: 'Screenings, discussions and filmmaking workshops.',
+      icon: Icons.movie,
+      memberCount: 72,
+      rating: 4.1,
+      imageUrl:
+        'https://source.unsplash.com/photos/mNen3xP4wXA/800x450',
+    ),
+    Society(
+      name: 'Chess Club',
+      description: 'Casual and competitive chess sessions and tournaments.',
+      icon: Icons.sports_esports,
+      memberCount: 34,
+      rating: 2.2,
+      imageUrl:
+        'https://source.unsplash.com/photos/hayc4n2dI-k/800x450',
+    ),
+    Society(
+      name: 'Cooking Society',
+      description: 'Learn new recipes, cook together and share meals.',
+      icon: Icons.restaurant,
+      memberCount: 88,
+      rating: 4.0,
+      imageUrl:
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop',
+    ),
+    Society(
+      name: 'Entrepreneurship Society',
+      description: 'Startups, pitch nights and networking for student founders.',
+      icon: Icons.lightbulb,
+      memberCount: 64,
+      rating: 3.7,
+      imageUrl:
+          'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
     ),
   ];
 
