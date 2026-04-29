@@ -1,9 +1,25 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
 class User(AbstractUser):
     up_number = models.CharField(max_length=20, unique=True)
     opt_in_email = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        """Auto-generate a unique UP number on first save if missing.
+
+        This avoids inserting an empty string for ``up_number`` which was
+        triggering ``UNIQUE constraint failed: core_user.up_number`` errors
+        when creating new users.
+        """
+        if not self.pk and not self.up_number:
+            # Estimate the next primary key to derive a stable UP number.
+            last_user = self.__class__.objects.order_by("-pk").first()
+            next_id = (last_user.pk + 1) if last_user else 1
+            self.up_number = f"UP{next_id:06d}"
+
+        return super().save(*args, **kwargs)
 
 class Society(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -27,6 +43,9 @@ class Membership(models.Model):
 
     class Meta:
         unique_together = ('user', 'society')
+
+    def __str__(self):
+        return f"({self.user.username}, {self.society.name}, {self.role})"
 
 class Poll(models.Model):
     society = models.ForeignKey(Society, on_delete=models.CASCADE)
@@ -58,6 +77,10 @@ class Review(models.Model):
 
     class Meta:
         unique_together = ('user', 'society')
+
+    def __str__(self):
+        # Show reviewer email and UP number to make admin listings clearer.
+        return f"{self.user.email} ({self.user.up_number})"
 
 class ReviewResponse(models.Model):
     review = models.ForeignKey(Review, on_delete=models.CASCADE)

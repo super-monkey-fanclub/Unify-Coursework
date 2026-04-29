@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'services/auth_service.dart';
+
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  final Map<String, dynamic>? currentUser;
+
+  const AuthPage({super.key, this.currentUser});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -10,6 +14,10 @@ class AuthPage extends StatefulWidget {
 
 class _AuthPageState extends State<AuthPage> {
   bool _showSignUp = false;
+
+  bool _isLoading = false;
+
+  final AuthService _authService = AuthService();
 
   final _loginKey = GlobalKey<FormState>();
   final _regKey = GlobalKey<FormState>();
@@ -41,6 +49,45 @@ class _AuthPageState extends State<AuthPage> {
 
   bool _isValidEmail(String email) {
     return email.contains('@') && email.contains('.');
+  }
+
+  // ── Logged-in view ─────────────────────────────────────────────────────────
+  Widget _buildLoggedInView() {
+    final email = widget.currentUser?['email'] as String? ?? '';
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.person, size: 64),
+            const SizedBox(height: 16),
+            const Text(
+              'You are currently signed in as',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              email,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Pop back to the caller indicating sign-out explicitly.
+                Navigator.of(context).pop({'__logout__': true});
+              },
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Login page ─────────────────────────────────────────────────────────────
@@ -83,11 +130,25 @@ class _AuthPageState extends State<AuthPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                if (_loginKey.currentState!.validate()) {
-                  _showMessage('Login not yet implemented');
-                }
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (!_loginKey.currentState!.validate()) return;
+
+                      setState(() => _isLoading = true);
+                      final result = await _authService.login(
+                        email: _loginEmail.text.trim(),
+                        password: _loginPassword.text,
+                      );
+                      setState(() => _isLoading = false);
+
+                      if (result['success'] == true) {
+                        _showMessage('Login successful');
+                        Navigator.of(context).pop(result['user']);
+                      } else {
+                        _showMessage(result['message'] ?? 'Login failed.');
+                      }
+                    },
               child: const Text('Login'),
             ),
             const SizedBox(height: 16),
@@ -174,11 +235,29 @@ class _AuthPageState extends State<AuthPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                if (_regKey.currentState!.validate()) {
-                  _showMessage('Registration not yet implemented');
-                }
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (!_regKey.currentState!.validate()) return;
+
+                      setState(() => _isLoading = true);
+                      final result = await _authService.register(
+                        name: _regName.text.trim(),
+                        email: _regEmail.text.trim(),
+                        password: _regPassword.text,
+                      );
+                      setState(() => _isLoading = false);
+
+                      if (result['success'] == true) {
+                        _showMessage('Registration successful');
+                        // Optionally switch back to login form after sign-up
+                        setState(() => _showSignUp = false);
+                      } else {
+                        _showMessage(
+                          result['message'] ?? 'Registration failed.',
+                        );
+                      }
+                    },
               child: const Text('Sign Up'),
             ),
             const SizedBox(height: 16),
@@ -194,12 +273,18 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLoggedIn = widget.currentUser != null;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
-        title: Text(_showSignUp ? 'Sign Up' : 'Login'),
+        title: Text(
+          isLoggedIn
+              ? 'Account'
+              : (_showSignUp ? 'Sign Up' : 'Login'),
+        ),
       ),
-      body: _showSignUp ? _buildSignUpPage() : _buildLoginPage(),
+      body:
+          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }

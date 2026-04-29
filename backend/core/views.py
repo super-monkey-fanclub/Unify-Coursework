@@ -1,296 +1,260 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, action
-from rest_framework.response import Response
-from rest_framework.reverse import reverse
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
+import json
+
+from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
-from django.db.models import Count, Q
-from .serializers import RegisterSerializer
-from .models import (
-    Society,
-    Membership,
-    Poll,
-    PollOption,
-    PollVote,
-    Review,
-    ReviewResponse,
-    ReviewReaction
-)
+from django.http import JsonResponse, HttpRequest
 
-from .serializers import (
-    SocietySerializer,
-    MembershipSerializer,
-    PollSerializer,
-    PollOptionSerializer,
-    PollVoteSerializer,
-    ReviewSerializer,
-    ReviewResponseSerializer,
-    ReviewReactionSerializer
-)
+from .models import Society, Membership, Review
+
+User = get_user_model()
 
 
-class SocietyViewSet(viewsets.ModelViewSet):
-    queryset = Society.objects.all()
-    serializer_class = SocietySerializer
-    permission_classes = [AllowAny]
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def join(self, request, pk=None):
-        """Join a society"""
-        society = self.get_object()
-        user = request.user
-        
-        if Membership.objects.filter(user=user, society=society).exists():
-            return Response(
-                {"detail": "You are already a member of this society"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        membership = Membership.objects.create(
-            user=user,
-            society=society,
-            role='member'
-        )
-        return Response(
-            {"detail": "Successfully joined society", "membership_id": membership.id},
-            status=status.HTTP_201_CREATED
-        )
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def leave(self, request, pk=None):
-        """Leave a society"""
-        society = self.get_object()
-        user = request.user
-        
-        try:
-            membership = Membership.objects.get(user=user, society=society)
-            membership.delete()
-            return Response({"detail": "Successfully left society"})
-        except Membership.DoesNotExist:
-            return Response(
-                {"detail": "You are not a member of this society"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def my_societies(self, request):
-        """Get the current user's societies"""
-        memberships = Membership.objects.filter(user=request.user).select_related('society')
-        societies = [m.society for m in memberships]
-        serializer = self.get_serializer(societies, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=['get'])
-    def members(self, request, pk=None):
-        """Get all members of a society"""
-        society = self.get_object()
-        memberships = Membership.objects.filter(society=society).select_related('user')
-        data = [
-            {
-                "id": m.user.id,
-                "username": m.user.username,
-                "role": m.role,
-                "joined_at": m.created_at
-            }
-            for m in memberships
-        ]
-        return Response(data)
+def _json_body(request: HttpRequest) -> dict:
+	try:
+		return json.loads(request.body.decode("utf-8"))
+	except Exception:
+		return {}
 
 
-class MembershipViewSet(viewsets.ModelViewSet):
-    queryset = Membership.objects.all()
-    serializer_class = MembershipSerializer
-    permission_classes = [IsAuthenticated]
+@csrf_exempt
+@require_http_methods(["POST"])
+def register_view(request: HttpRequest):
+	data = _json_body(request)
+
+	name = (data.get("name") or "").strip()
+	email = (data.get("email") or "").strip().lower()
+	password = data.get("password") or ""
+
+	if not name or not email or not password:
+		return JsonResponse({"error": "All fields are required."}, status=400)
+
+	if "@" not in email or "." not in email:
+		return JsonResponse({"error": "Enter a valid email address."}, status=400)
+
+	if User.objects.filter(email=email).exists():
+		return JsonResponse({"error": "An account with that email already exists."}, status=409)
+
+	# Use email as username so it's unique and simple.
+	user = User.objects.create_user(username=email, email=email, password=password)
+	user.first_name = name
+	user.save()
+
+	return JsonResponse(
+		{
+			"message": "Registration successful.",
+			"user": {
+				"id": user.id,
+				"username": user.username,
+				"email": user.email,
+			},
+		},
+		status=201,
+	)
 
 
-class PollViewSet(viewsets.ModelViewSet):
-    queryset = Poll.objects.all()
-    serializer_class = PollSerializer
-    permission_classes = [AllowAny]
+@csrf_exempt
+@require_http_methods(["POST"])
+def login_view(request: HttpRequest):
+	data = _json_body(request)
 
-    @action(detail=True, methods=['get'])
-    def results(self, request, pk=None):
-        """Get poll results with vote counts per option"""
-        poll = self.get_object()
-        options = PollOption.objects.filter(poll=poll).annotate(
-            vote_count=Count('pollvote')
-        )
-        total_votes = PollVote.objects.filter(poll=poll).count()
-        
-        results = [
-            {
-                "id": option.id,
-                "option_text": option.option_text,
-                "votes": option.vote_count,
-                "percentage": (option.vote_count / total_votes * 100) if total_votes > 0 else 0
-            }
-            for option in options
-        ]
-        
-        return Response({
-            "poll_id": poll.id,
-            "title": poll.title,
-            "total_votes": total_votes,
-            "options": results
-        })
+	email = (data.get("email") or "").strip().lower()
+	password = data.get("password") or ""
 
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def my_vote(self, request, pk=None):
-        """Get current user's vote on this poll"""
-        poll = self.get_object()
-        try:
-            vote = PollVote.objects.get(user=request.user, poll=poll)
-            return Response({
-                "voted": True,
-                "option_id": vote.option.id,
-                "option_text": vote.option.option_text
-            })
-        except PollVote.DoesNotExist:
-            return Response({"voted": False})
+	if not email or not password:
+		return JsonResponse({"error": "Email and password are required."}, status=400)
+
+	try:
+		user = User.objects.get(email=email)
+	except User.DoesNotExist:
+		return JsonResponse({"error": "Invalid email or password."}, status=401)
+
+	if not user.check_password(password):
+		return JsonResponse({"error": "Invalid email or password."}, status=401)
+
+	return JsonResponse(
+		{
+			"message": "Login successful.",
+			"user": {
+				"id": user.id,
+				"username": user.username,
+				"email": user.email,
+			},
+		},
+		status=200,
+	)
 
 
-class PollOptionViewSet(viewsets.ModelViewSet):
-    queryset = PollOption.objects.all()
-    serializer_class = PollOptionSerializer
-    permission_classes = [AllowAny]
+@csrf_exempt
+@require_http_methods(["POST"])
+def join_society_view(request: HttpRequest):
+	"""Create a membership for the given user and society.
+
+	Expected JSON body: {"email": "user@example.com", "society_name": "Art Society"}
+	"""
+	data = _json_body(request)
+	email = (data.get("email") or "").strip().lower()
+	society_name = (data.get("society_name") or "").strip()
+
+	if not email or not society_name:
+		return JsonResponse({"error": "Email and society_name are required."}, status=400)
+
+	try:
+		user = User.objects.get(email=email)
+	except User.DoesNotExist:
+		return JsonResponse({"error": "User not found for that email."}, status=404)
+
+	society, _ = Society.objects.get_or_create(
+		name=society_name,
+		defaults={"description": "", "category": "General"},
+	)
+
+	membership, created = Membership.objects.get_or_create(
+		user=user,
+		society=society,
+		defaults={"role": "member"},
+	)
+
+	return JsonResponse(
+		{
+			"message": "Joined society" if created else "Already a member",
+			"membership": {
+				"id": membership.id,
+				"user_id": membership.user_id,
+				"society_id": membership.society_id,
+				"role": membership.role,
+			},
+		},
+		status=201 if created else 200,
+	)
 
 
-class PollVoteViewSet(viewsets.ModelViewSet):
-    queryset = PollVote.objects.all()
-    serializer_class = PollVoteSerializer
-    permission_classes = [IsAuthenticated]
+@csrf_exempt
+@require_http_methods(["POST"])
+def my_societies_view(request: HttpRequest):
+	"""Return all societies the given user is a member of.
 
-    def perform_create(self, serializer):
-        """Automatically set the user when creating a vote"""
-        serializer.save(user=self.request.user)
+	Expected JSON body: {"email": "user@example.com"}
+	"""
+	data = _json_body(request)
+	email = (data.get("email") or "").strip().lower()
 
+	if not email:
+		return JsonResponse({"error": "Email is required."}, status=400)
 
-class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.all()
-    serializer_class = ReviewSerializer
-    permission_classes = [AllowAny]
+	try:
+		user = User.objects.get(email=email)
+	except User.DoesNotExist:
+		return JsonResponse({"error": "User not found for that email."}, status=404)
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def my_reviews(self, request):
-        """Get reviews written by the current user"""
-        reviews = Review.objects.filter(user=request.user)
-        serializer = self.get_serializer(reviews, many=True)
-        return Response(serializer.data)
+	memberships = (
+		Membership.objects
+			.select_related("society")
+			.filter(user=user)
+			.order_by("society__name")
+	)
 
-    @action(detail=True, methods=['get'])
-    def society_reviews(self, request, pk=None):
-        """Get all reviews for a specific society"""
-        review = self.get_object()
-        reviews = Review.objects.filter(society=review.society).order_by('-created_at')
-        serializer = self.get_serializer(reviews, many=True)
-        return Response(serializer.data)
+	societies = [
+		{
+			"id": m.society.id,
+			"name": m.society.name,
+			"description": m.society.description,
+			"category": m.society.category,
+		}
+		for m in memberships
+	]
 
-
-class ReviewResponseViewSet(viewsets.ModelViewSet):
-    queryset = ReviewResponse.objects.all()
-    serializer_class = ReviewResponseSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class ReviewReactionViewSet(viewsets.ModelViewSet):
-    queryset = ReviewReaction.objects.all()
-    serializer_class = ReviewReactionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        """Automatically set the user when creating a reaction"""
-        serializer.save(user=self.request.user)
-
-@api_view(['POST'])
-def register(request):
-
-    serializer = RegisterSerializer(data=request.data)
-
-    if serializer.is_valid():
-        user = serializer.save()
-
-        refresh = RefreshToken.for_user(user)
-
-        return Response({
-            "user": serializer.data,
-            "access": str(refresh.access_token),
-            "refresh": str(refresh)
-        })
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+	return JsonResponse({"societies": societies}, status=200)
 
 
-@api_view(['POST'])
-def login(request):
+@csrf_exempt
+@require_http_methods(["GET"])
+def society_reviews_view(request: HttpRequest):
+	"""Return all reviews for a given society.
 
-    username = request.data.get("username")
-    password = request.data.get("password")
+	Query parameter: ?society=Society+Name
+	"""
+	society_name = (request.GET.get("society") or "").strip()
+	if not society_name:
+		return JsonResponse({"error": "society query parameter is required."}, status=400)
 
-    user = authenticate(username=username, password=password)
+	try:
+		society = Society.objects.get(name=society_name)
+	except Society.DoesNotExist:
+		return JsonResponse({"error": "Society not found."}, status=404)
 
-    if user is None:
-        return Response({"error": "Invalid credentials"}, status=401)
+	reviews = (
+		Review.objects
+			.filter(society=society)
+			.select_related("user")
+			.order_by("-created_at")
+	)
 
-    refresh = RefreshToken.for_user(user)
+	data = [
+		{
+			"author": r.user.email,
+			"rating": r.rating,
+			"comment": r.comment,
+		}
+		for r in reviews
+	]
 
-    return Response({
-        "access": str(refresh.access_token),
-        "refresh": str(refresh)
-    })
-
-
-@api_view(['GET'])
-def me(request):
-
-    if request.user.is_authenticated:
-        return Response({
-            "id": request.user.id,
-            "username": request.user.username,
-            "email": request.user.email
-        })
-
-    return Response({"error": "Not authenticated"}, status=401)
-
-
-@api_view(['GET'])
-def home(request):
-    return Response({
-        "message": "Welcome to Unify API",
-        "version": "1.0.0",
-        "endpoints": {
-            "admin": "/admin/",
-            "api": "/api/",
-            "register": "/api/register/",
-            "login": "/api/login/",
-            "me": "/api/me/",
-            "societies": "/api/societies/",
-            "polls": "/api/polls/",
-            "reviews": "/api/reviews/"
-        }
-    })
+	return JsonResponse({"reviews": data}, status=200)
 
 
-@api_view(['GET'])
-def api_root(request):
-    """API root showing all available endpoints"""
-    return Response({
-        'societies': reverse('society-list', request=request),
-        'memberships': reverse('membership-list', request=request),
-        'polls': reverse('poll-list', request=request),
-        'poll_options': reverse('polloption-list', request=request),
-        'poll_votes': reverse('pollvote-list', request=request),
-        'reviews': reverse('review-list', request=request),
-        'review_responses': reverse('reviewresponse-list', request=request),
-        'review_reactions': reverse('reviewreaction-list', request=request),
-        'register': reverse('register', request=request),
-        'login': reverse('login', request=request),
-        'me': reverse('me', request=request),
-    })
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_review_view(request: HttpRequest):
+	"""Create or update a review for a society by a member.
+
+	Expected JSON body:
+	{"email": "user@example.com", "society_name": "Art Society", "rating": 5, "comment": "Great!"}
+	"""
+	data = _json_body(request)
+	email = (data.get("email") or "").strip().lower()
+	society_name = (data.get("society_name") or "").strip()
+	rating = data.get("rating")
+	comment = (data.get("comment") or "").strip()
+
+	if not email or not society_name or rating is None:
+		return JsonResponse({"error": "email, society_name and rating are required."}, status=400)
+
+	try:
+		rating = int(rating)
+	except (TypeError, ValueError):
+		return JsonResponse({"error": "rating must be an integer."}, status=400)
+
+	if rating < 1 or rating > 5:
+		return JsonResponse({"error": "rating must be between 1 and 5."}, status=400)
+
+	try:
+		user = User.objects.get(email=email)
+	except User.DoesNotExist:
+		return JsonResponse({"error": "User not found for that email."}, status=404)
+
+	try:
+		society = Society.objects.get(name=society_name)
+	except Society.DoesNotExist:
+		return JsonResponse({"error": "Society not found."}, status=404)
+
+	# Only allow members of the society to review it.
+	if not Membership.objects.filter(user=user, society=society).exists():
+		return JsonResponse({"error": "Only members of this society can leave a review."}, status=403)
+
+	review, created = Review.objects.update_or_create(
+		user=user,
+		society=society,
+		defaults={"rating": rating, "comment": comment},
+	)
+
+	return JsonResponse(
+		{
+			"message": "Review created" if created else "Review updated",
+			"review": {
+				"author": review.user.email,
+				"rating": review.rating,
+				"comment": review.comment,
+			},
+		},
+		status=201 if created else 200,
+	)
