@@ -1,10 +1,11 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from core.models import Membership, Poll, PollOption, Review, ReviewReaction, Society
+from core.models import Membership, Notification, Poll, PollOption, Review, ReviewReaction, Society
 
 
 User = get_user_model()
@@ -267,3 +268,47 @@ class ReviewReactionAndAnalyticsTests(TestCase):
 		)
 
 		self.assertEqual(response.status_code, 403)
+
+
+class PollDeadlineAutomationTests(TestCase):
+	def setUp(self):
+		self.society = Society.objects.create(
+			name='Drama Society',
+			description='Drama club',
+			category='Arts',
+		)
+		self.member = User.objects.create_user(
+			username='notify@example.com',
+			email='notify@example.com',
+			password='password123',
+			up_number='UP010001',
+		)
+		Membership.objects.create(user=self.member, society=self.society, role='member')
+		self.poll = Poll.objects.create(
+			society=self.society,
+			title='Trip destination',
+			description='Choose where to go.',
+			opens_at=timezone.now() - timedelta(days=1),
+			closes_at=timezone.now() + timedelta(minutes=45),
+		)
+
+	def test_command_creates_closing_soon_notifications_once(self):
+		call_command('check_poll_deadlines')
+
+		notifications = Notification.objects.filter(
+			user=self.member,
+			notification_type='poll_closing_soon',
+			related_poll=self.poll,
+		)
+		self.assertEqual(notifications.count(), 1)
+		self.assertTrue(Poll.objects.get(id=self.poll.id).notified_closing_soon)
+
+		call_command('check_poll_deadlines')
+		self.assertEqual(
+			Notification.objects.filter(
+				user=self.member,
+				notification_type='poll_closing_soon',
+				related_poll=self.poll,
+			).count(),
+			1,
+		)
