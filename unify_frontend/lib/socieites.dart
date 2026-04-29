@@ -946,7 +946,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']?.toString() ?? 'Could not load polls.'),
+          content: Text(
+            result['message']?.toString() ?? 'Could not load polls.',
+          ),
         ),
       );
     }
@@ -961,9 +963,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   Future<void> _voteInPoll(PollView poll, PollOptionView option) async {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to vote.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please log in to vote.')));
       return;
     }
 
@@ -987,7 +989,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result['message']?.toString() ?? 'Could not submit vote.'),
+        content: Text(
+          result['message']?.toString() ?? 'Could not submit vote.',
+        ),
       ),
     );
 
@@ -1039,7 +1043,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result['message']?.toString() ?? 'Could not delete poll.'),
+        content: Text(
+          result['message']?.toString() ?? 'Could not delete poll.',
+        ),
       ),
     );
 
@@ -1056,26 +1062,18 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     final descController = TextEditingController(
       text: existing?.description ?? '',
     );
-    DateTime opensAt = existing?.opensAt.toLocal() ??
+    DateTime opensAt =
+        existing?.opensAt.toLocal() ??
         DateTime.now().add(const Duration(hours: 24));
-    DateTime closesAt = existing?.closesAt.toLocal() ??
+    DateTime closesAt =
+        existing?.closesAt.toLocal() ??
         DateTime.now().add(const Duration(days: 2));
 
     final List<TextEditingController> optionControllers =
         (existing?.options ??
                 const <PollOptionView>[
-                  PollOptionView(
-                    id: 0,
-                    text: '',
-                    voteCount: 0,
-                    percentage: 0,
-                  ),
-                  PollOptionView(
-                    id: 0,
-                    text: '',
-                    voteCount: 0,
-                    percentage: 0,
-                  ),
+                  PollOptionView(id: 0, text: '', voteCount: 0, percentage: 0),
+                  PollOptionView(id: 0, text: '', voteCount: 0, percentage: 0),
                 ])
             .map((o) => TextEditingController(text: o.text))
             .toList();
@@ -1289,7 +1287,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result['message']?.toString() ?? 'Poll request complete.'),
+        content: Text(
+          result['message']?.toString() ?? 'Poll request complete.',
+        ),
       ),
     );
 
@@ -1895,8 +1895,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                                     poll.deleteBlockReason != null)
                                   Text(
                                     poll.deleteBlockReason!,
-                                    style:
-                                        TextStyle(color: Colors.orange.shade800),
+                                    style: TextStyle(
+                                      color: Colors.orange.shade800,
+                                    ),
                                   ),
                               ],
                             ],

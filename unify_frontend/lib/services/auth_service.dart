@@ -66,10 +66,7 @@ class AuthService {
       if (response.statusCode == 200) {
         return {'success': true, 'user': body['user']};
       }
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Login failed.',
-      };
+      return {'success': false, 'message': body['error'] ?? 'Login failed.'};
     } catch (_) {
       return {'success': false, 'message': 'Could not connect to the server.'};
     }

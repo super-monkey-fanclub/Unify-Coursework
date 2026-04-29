@@ -84,10 +84,7 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 8),
             Text(
               email,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
@@ -119,18 +116,12 @@ class _AuthPageState extends State<AuthPage> {
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(
-                    value: 'regular',
-                    child: Text('Regular'),
-                  ),
+                  DropdownMenuItem(value: 'regular', child: Text('Regular')),
                   DropdownMenuItem(
                     value: 'society_admin',
                     child: Text('Society Admin'),
                   ),
-                  DropdownMenuItem(
-                    value: 'dev',
-                    child: Text('Developer'),
-                  ),
+                  DropdownMenuItem(value: 'dev', child: Text('Developer')),
                 ],
                 onChanged: (value) {
                   if (value == null) return;
@@ -432,13 +423,12 @@ class _AuthPageState extends State<AuthPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
-          isLoggedIn
-              ? 'Account'
-              : (_showSignUp ? 'Sign Up' : 'Login'),
+          isLoggedIn ? 'Account' : (_showSignUp ? 'Sign Up' : 'Login'),
         ),
       ),
-      body:
-          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
+      body: isLoggedIn
+          ? _buildLoggedInView()
+          : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }

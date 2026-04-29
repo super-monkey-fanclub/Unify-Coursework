@@ -412,20 +412,14 @@ class SocietyService {
           .post(
             Uri.parse('$_baseUrl/polls/delete/'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'actor_email': actorEmail,
-              'poll_id': pollId,
-            }),
+            body: jsonEncode({'actor_email': actorEmail, 'poll_id': pollId}),
           )
           .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return {
-          'success': true,
-          'message': body['message'] ?? 'Poll deleted.',
-        };
+        return {'success': true, 'message': body['message'] ?? 'Poll deleted.'};
       }
 
       return {
