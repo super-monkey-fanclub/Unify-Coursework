@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'services/society_service.dart';
@@ -11,13 +9,7 @@ enum SocietySortOption {
   ratingHighLow,
 }
 
-enum SocietyRatingFilter {
-  any,
-  atLeastOne,
-  atLeastTwo,
-  atLeastThree,
-  atLeastFour,
-}
+enum SocietyRatingFilter { any, atLeastThree, atLeastFour }
 
 class SocietySummary {
   final String name;
@@ -65,9 +57,9 @@ class SocietySummary {
 
 class SocietiesPage extends StatefulWidget {
   final String? userEmail;
-  final String? userAuthToken;
+  final String? userAccountType;
 
-  const SocietiesPage({super.key, this.userEmail, this.userAuthToken});
+  const SocietiesPage({super.key, this.userEmail, this.userAccountType});
 
   @override
   State<SocietiesPage> createState() => _SocietiesPageState();
@@ -99,8 +91,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
     } else {
       _applyFilters();
     }
-    // Refresh live average ratings from backend when available
-    unawaited(_refreshAverages());
   }
 
   @override
@@ -120,7 +110,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
         icon: Icons.palette,
         memberCount: 82,
-        averageRating: 3.6,
+        averageRating: 4.6,
       ),
       SocietySummary(
         name: 'Anime Society',
@@ -130,7 +120,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
         icon: Icons.tv,
         memberCount: 101,
-        averageRating: 4.1,
+        averageRating: 4.2,
       ),
       SocietySummary(
         name: 'Gaming Society',
@@ -140,7 +130,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
         icon: Icons.sports_esports,
         memberCount: 174,
-        averageRating: 4.1,
+        averageRating: 4.8,
       ),
       SocietySummary(
         name: 'Music Society',
@@ -150,7 +140,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
             'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
         icon: Icons.music_note,
         memberCount: 93,
-        averageRating: 4.0,
+        averageRating: 4.4,
       ),
       SocietySummary(
         name: 'Photography Club',
@@ -178,10 +168,10 @@ class _SocietiesPageState extends State<SocietiesPage> {
         description: 'Acting workshops, productions, and backstage roles.',
         category: 'Performance',
         imageUrl:
-            'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+            'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&auto=format&fit=crop',
         icon: Icons.theater_comedy,
         memberCount: 59,
-        averageRating: 1.8,
+        averageRating: 3.9,
       ),
       SocietySummary(
         name: 'Coding Society',
@@ -202,58 +192,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
         icon: Icons.precision_manufacturing,
         memberCount: 48,
         averageRating: 4.3,
-      ),
-      SocietySummary(
-        name: 'Environmental Club',
-        description:
-            'Campus green projects, cleanups and sustainability events.',
-        category: 'Community',
-        imageUrl:
-            'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
-        icon: Icons.eco,
-        memberCount: 56,
-        averageRating: 3.8,
-      ),
-      SocietySummary(
-        name: 'Film Society',
-        description: 'Screenings, discussions and filmmaking workshops.',
-        category: 'Creative',
-        imageUrl:
-            'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        icon: Icons.movie,
-        memberCount: 72,
-        averageRating: 4.1,
-      ),
-      SocietySummary(
-        name: 'Chess Club',
-        description: 'Casual and competitive chess sessions and tournaments.',
-        category: 'Games',
-        imageUrl:
-            'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        icon: Icons.sports_esports,
-        memberCount: 34,
-        averageRating: 2.2,
-      ),
-      SocietySummary(
-        name: 'Cooking Society',
-        description: 'Learn new recipes, cook together and share meals.',
-        category: 'Lifestyle',
-        imageUrl:
-            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop',
-        icon: Icons.restaurant,
-        memberCount: 88,
-        averageRating: 4.0,
-      ),
-      SocietySummary(
-        name: 'Entrepreneurship Society',
-        description:
-            'Startups, pitch nights and networking for student founders.',
-        category: 'Professional',
-        imageUrl:
-            'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
-        icon: Icons.lightbulb,
-        memberCount: 64,
-        averageRating: 3.7,
       ),
     ];
   }
@@ -282,9 +220,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
       _applyFilters();
     }
 
-    // When memberships synced, also refresh live averages
-    unawaited(_refreshAverages());
-
     if (mounted) {
       setState(() {
         _loadingMembership = false;
@@ -305,8 +240,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
 
       final double minRating = switch (_ratingFilter) {
         SocietyRatingFilter.any => 0,
-        SocietyRatingFilter.atLeastOne => 1,
-        SocietyRatingFilter.atLeastTwo => 2,
         SocietyRatingFilter.atLeastThree => 3,
         SocietyRatingFilter.atLeastFour => 4,
       };
@@ -333,40 +266,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
     setState(() {
       _filteredSocieties = next;
     });
-  }
-
-  Future<void> _refreshAverages() async {
-    try {
-      final futures = _allSocieties.map((society) async {
-        final res = await _societyService.getReviews(societyName: society.name);
-        if (res['success'] == true) {
-          final List<dynamic> raw = res['reviews'] as List<dynamic>? ?? [];
-          if (raw.isNotEmpty) {
-            final ratings = raw
-                .map(
-                  (m) =>
-                      ((m as Map<String, dynamic>)['rating'] as num?)
-                          ?.toDouble() ??
-                      0.0,
-                )
-                .toList();
-            final double avg = ratings.reduce((a, b) => a + b) / ratings.length;
-            final double rounded = double.parse(avg.toStringAsFixed(1));
-            return society.copyWith(averageRating: rounded);
-          }
-        }
-        return society;
-      }).toList();
-
-      final updated = await Future.wait(futures);
-      if (!mounted) return;
-      setState(() {
-        _allSocieties = updated;
-      });
-      _applyFilters();
-    } catch (_) {
-      // Silently ignore network errors — keep seeded values
-    }
   }
 
   void _resetFilters() {
@@ -403,10 +302,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
     switch (filter) {
       case SocietyRatingFilter.any:
         return 'Any';
-      case SocietyRatingFilter.atLeastOne:
-        return '1.0+';
-      case SocietyRatingFilter.atLeastTwo:
-        return '2.0+';
       case SocietyRatingFilter.atLeastThree:
         return '3.0+';
       case SocietyRatingFilter.atLeastFour:
@@ -595,176 +490,142 @@ class _SocietiesPageState extends State<SocietiesPage> {
           Expanded(
             child: _filteredSocieties.isEmpty
                 ? _EmptySocietyState(onReset: _resetFilters)
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final double width = constraints.maxWidth;
-                      final int columns = width < 420
-                          ? 1
-                          : width < 900
-                          ? 2
-                          : width < 1200
-                          ? 3
-                          : 4;
-
-                      return GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: columns,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          mainAxisExtent: 320,
-                        ),
-                        itemCount: _filteredSocieties.length,
-                        itemBuilder: (context, index) {
-                          final society = _filteredSocieties[index];
-                          return Card(
-                            margin: EdgeInsets.zero,
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => SocietyDetailsPage(
-                                      name: society.name,
-                                      description: society.description,
-                                      imageUrl: society.imageUrl,
-                                      icon: society.icon,
-                                      userEmail: widget.userEmail,
-                                      userAuthToken: widget.userAuthToken,
-                                      initialJoined: society.joined,
-                                      initialMemberCount: society.memberCount,
-                                      initialAverageRating:
-                                          society.averageRating,
-                                      onMembershipChanged: (joined, count) {
-                                        _updateSocietyFromDetails(
-                                          societyName: society.name,
-                                          joined: joined,
-                                          memberCount: count,
-                                        );
-                                      },
-                                      onAverageRatingChanged: (rating) {
-                                        _updateSocietyFromDetails(
-                                          societyName: society.name,
-                                          averageRating: rating,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  SizedBox(
-                                    height: 140,
-                                    child: Image.network(
-                                      society.imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary.withOpacity(0.15),
-                                        child: Icon(
-                                          society.icon,
-                                          size: 60,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  society.name,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                ),
-                                              ),
-                                              if (society.joined)
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        Colors.green.shade100,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          999,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    'Joined',
-                                                    style: TextStyle(
-                                                      color:
-                                                          Colors.green.shade800,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            society.description,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.bodySmall,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 8,
-                                            children: [
-                                              _MetaPill(
-                                                icon: Icons.category,
-                                                text: society.category,
-                                              ),
-                                              _MetaPill(
-                                                icon: Icons.people,
-                                                text:
-                                                    '${society.memberCount} members',
-                                              ),
-                                              _MetaPill(
-                                                icon: Icons.star,
-                                                text: society.averageRating
-                                                    .toStringAsFixed(1),
-                                              ),
-                                            ],
-                                          ),
-                                          const Spacer(),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                    itemCount: _filteredSocieties.length,
+                    itemBuilder: (context, index) {
+                      final society = _filteredSocieties[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SocietyDetailsPage(
+                                  name: society.name,
+                                  description: society.description,
+                                  imageUrl: society.imageUrl,
+                                  icon: society.icon,
+                                  userEmail: widget.userEmail,
+                                  userAccountType: widget.userAccountType,
+                                  initialJoined: society.joined,
+                                  initialMemberCount: society.memberCount,
+                                  initialAverageRating: society.averageRating,
+                                  onMembershipChanged: (joined, count) {
+                                    _updateSocietyFromDetails(
+                                      societyName: society.name,
+                                      joined: joined,
+                                      memberCount: count,
+                                    );
+                                  },
+                                  onAverageRatingChanged: (rating) {
+                                    _updateSocietyFromDetails(
+                                      societyName: society.name,
+                                      averageRating: rating,
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                height: 140,
+                                child: Image.network(
+                                  society.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withOpacity(0.15),
+                                    child: Icon(
+                                      society.icon,
+                                      size: 60,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            society.name,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                          ),
+                                        ),
+                                        if (society.joined)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                            child: Text(
+                                              'Joined',
+                                              style: TextStyle(
+                                                color: Colors.green.shade800,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      society.description,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        _MetaPill(
+                                          icon: Icons.category,
+                                          text: society.category,
+                                        ),
+                                        _MetaPill(
+                                          icon: Icons.people,
+                                          text:
+                                              '${society.memberCount} members',
+                                        ),
+                                        _MetaPill(
+                                          icon: Icons.star,
+                                          text: society.averageRating
+                                              .toStringAsFixed(1),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -797,143 +658,6 @@ class _MetaPill extends StatelessWidget {
           Text(text),
         ],
       ),
-    );
-  }
-}
-
-class MembersPage extends StatefulWidget {
-  final String societyName;
-  final String? userEmail;
-
-  const MembersPage({super.key, required this.societyName, this.userEmail});
-
-  @override
-  State<MembersPage> createState() => _MembersPageState();
-}
-
-class _MembersPageState extends State<MembersPage> {
-  final SocietyService _societyService = SocietyService();
-  bool _loading = true;
-  List<Map<String, dynamic>> _members = [];
-  bool _viewerIsAdmin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMembers();
-  }
-
-  Future<void> _loadMembers() async {
-    setState(() => _loading = true);
-    final res = await _societyService.getMembers(
-      societyName: widget.societyName,
-      viewerEmail: widget.userEmail,
-    );
-    if (!mounted) return;
-    if (res['success'] == true) {
-      setState(() {
-        _members = (res['members'] as List<dynamic>)
-            .cast<Map<String, dynamic>>();
-        _viewerIsAdmin = res['viewer_is_admin'] == true;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            res['message']?.toString() ?? 'Could not load members.',
-          ),
-        ),
-      );
-    }
-    if (mounted) setState(() => _loading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Members — ${widget.societyName}'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _members.isEmpty
-          ? Center(child: Text('No members found.'))
-          : ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: _members.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final m = _members[index];
-                final isAdminMember = (m['role'] ?? '') == 'admin';
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text((m['up_number'] ?? '?').toString()),
-                  ),
-                  title: Text(
-                    (m['display_name'] ?? m['email'] ?? '').toString(),
-                  ),
-                  subtitle: Text('UP: ${m['up_number'] ?? ''}'),
-                  trailing: _viewerIsAdmin && !isAdminMember
-                      ? TextButton(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Make admin?'),
-                                content: Text(
-                                  'Promote ${m['display_name'] ?? m['email']} to admin?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(true),
-                                    child: const Text('Confirm'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm != true) return;
-                            final adminEmail = widget.userEmail ?? '';
-                            final memberId = (m['id'] as int?);
-                            if (memberId == null) return;
-                            final res = await _societyService.promoteMember(
-                              adminEmail: adminEmail,
-                              societyName: widget.societyName,
-                              memberId: memberId,
-                            );
-                            if (!mounted) return;
-                            if (res['success'] == true) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    res['message']?.toString() ?? 'Promoted.',
-                                  ),
-                                ),
-                              );
-                              await _loadMembers();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    res['message']?.toString() ??
-                                        'Could not promote.',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Make admin'),
-                        )
-                      : (isAdminMember ? const Text('Admin') : null),
-                );
-              },
-            ),
     );
   }
 }
@@ -1034,492 +758,59 @@ class SocietyReview {
 
 enum ReviewSortOption { latest, rating, popularity }
 
-// Mock seeded reviews used when the backend has no reviews (local/demo mode).
-final Map<String, List<Map<String, dynamic>>> _seededReviewsData = {
-  'Art Society': [
-    {
-      'id': 1,
-      'author': 'alice@example.com',
-      'author_display_name': 'Alice*',
-      'rating': 5,
-      'comment': 'Fantastic workshops and welcoming members.',
-      'likes': 4,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 2,
-      'author': 'ben@example.com',
-      'author_display_name': 'Ben*',
-      'rating': 4,
-      'comment': 'Great tutors but sometimes crowded.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 3,
-      'author': 'cara@example.com',
-      'author_display_name': 'Cara*',
-      'rating': 4,
-      'comment': 'Lovely community and useful resources.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 4,
-      'author': 'dave@example.com',
-      'author_display_name': 'Dave*',
-      'rating': 3,
-      'comment': 'Good overall, could use more crit nights.',
-      'likes': 0,
-      'dislikes': 1,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Drama Club': [
-    {
-      'id': 35,
-      'author': 'paula@example.com',
-      'author_display_name': 'Paula*',
-      'rating': 1,
-      'comment': 'Shows can be hit-or-miss.',
-      'likes': 0,
-      'dislikes': 1,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 36,
-      'author': 'quentin@example.com',
-      'author_display_name': 'Quentin*',
-      'rating': 2,
-      'comment': 'Friendly group but needs better rehearsal space.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 37,
-      'author': 'rachel@example.com',
-      'author_display_name': 'Rachel*',
-      'rating': 2,
-      'comment': 'Good opportunities but inconsistent scheduling.',
-      'likes': 0,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 38,
-      'author': 'steve@example.com',
-      'author_display_name': 'Steve*',
-      'rating': 2,
-      'comment': 'Nice people; performances need polishing.',
-      'likes': 0,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Anime Society': [
-    {
-      'id': 11,
-      'author': 'emma@example.com',
-      'author_display_name': 'Emma*',
-      'rating': 5,
-      'comment': 'Perfect screenings and friendly people.',
-      'likes': 6,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 12,
-      'author': 'frank@example.com',
-      'author_display_name': 'Frank*',
-      'rating': 2,
-      'comment': 'Too noisy for me at times.',
-      'likes': 0,
-      'dislikes': 2,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 13,
-      'author': 'gina@example.com',
-      'author_display_name': 'Gina*',
-      'rating': 4,
-      'comment': 'Nice selection of shows.',
-      'likes': 3,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 14,
-      'author': 'harry@example.com',
-      'author_display_name': 'Harry*',
-      'rating': 3,
-      'comment': 'Good events but limited seating.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 15,
-      'author': 'ivy@example.com',
-      'author_display_name': 'Ivy*',
-      'rating': 5,
-      'comment': 'Loved the cosplay meet-up!',
-      'likes': 4,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Gaming Society': [
-    {
-      'id': 21,
-      'author': 'jack@example.com',
-      'author_display_name': 'Jack*',
-      'rating': 5,
-      'comment': 'Great events and tournaments.',
-      'likes': 8,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 22,
-      'author': 'kate@example.com',
-      'author_display_name': 'Kate*',
-      'rating': 4,
-      'comment': 'Friendly members and good equipment.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 23,
-      'author': 'liam@example.com',
-      'author_display_name': 'Liam*',
-      'rating': 3,
-      'comment': 'Sometimes schedules clash with classes.',
-      'likes': 1,
-      'dislikes': 1,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 24,
-      'author': 'mona@example.com',
-      'author_display_name': 'Mona*',
-      'rating': 4,
-      'comment': 'Good variety of games.',
-      'likes': 3,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Music Society': [
-    {
-      'id': 31,
-      'author': 'nora@example.com',
-      'author_display_name': 'Nora*',
-      'rating': 5,
-      'comment': 'Fantastic concerts and rehearsals.',
-      'likes': 5,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 32,
-      'author': 'oliver@example.com',
-      'author_display_name': 'Oliver*',
-      'rating': 4,
-      'comment': 'Helpful for improving skills.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 33,
-      'author': 'paul@example.com',
-      'author_display_name': 'Paul*',
-      'rating': 2,
-      'comment': 'Needs better instrument availability.',
-      'likes': 0,
-      'dislikes': 2,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 34,
-      'author': 'queenie@example.com',
-      'author_display_name': 'Queenie*',
-      'rating': 4,
-      'comment': 'Great community performances.',
-      'likes': 3,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  // Additional new societies with varied reviews
-  'Environmental Club': [
-    {
-      'id': 41,
-      'author': 'rita@example.com',
-      'author_display_name': 'Rita*',
-      'rating': 4,
-      'comment': 'Love the beach cleanups.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 42,
-      'author': 'sam@example.com',
-      'author_display_name': 'Sam*',
-      'rating': 3,
-      'comment': 'Good aims but could be better organised.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 43,
-      'author': 'tina@example.com',
-      'author_display_name': 'Tina*',
-      'rating': 5,
-      'comment': 'Informative workshops and lovely people.',
-      'likes': 3,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 44,
-      'author': 'umar@example.com',
-      'author_display_name': 'Umar*',
-      'rating': 4,
-      'comment': 'Practical and impactful projects.',
-      'likes': 0,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 45,
-      'author': 'vicky@example.com',
-      'author_display_name': 'Vicky*',
-      'rating': 3,
-      'comment': 'Times could suit students better.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Film Society': [
-    {
-      'id': 51,
-      'author': 'will@example.com',
-      'author_display_name': 'Will*',
-      'rating': 5,
-      'comment': 'Excellent curation of films.',
-      'likes': 4,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 52,
-      'author': 'xena@example.com',
-      'author_display_name': 'Xena*',
-      'rating': 4,
-      'comment': 'Good discussions afterwards.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 53,
-      'author': 'yara@example.com',
-      'author_display_name': 'Yara*',
-      'rating': 3,
-      'comment': 'Venue could be more comfortable.',
-      'likes': 0,
-      'dislikes': 1,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 54,
-      'author': 'zane@example.com',
-      'author_display_name': 'Zane*',
-      'rating': 4,
-      'comment': 'Friendly and passionate members.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Chess Club': [
-    {
-      'id': 61,
-      'author': 'adam@example.com',
-      'author_display_name': 'Adam*',
-      'rating': 2,
-      'comment': 'Great practice partners.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 62,
-      'author': 'bella@example.com',
-      'author_display_name': 'Bella*',
-      'rating': 2,
-      'comment': 'Friendly but could use coaching sessions.',
-      'likes': 0,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 63,
-      'author': 'carl@example.com',
-      'author_display_name': 'Carl*',
-      'rating': 2,
-      'comment': 'Well organised tournaments.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 64,
-      'author': 'dina@example.com',
-      'author_display_name': 'Dina*',
-      'rating': 3,
-      'comment': 'Meet times clash with lectures sometimes.',
-      'likes': 0,
-      'dislikes': 2,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Cooking Society': [
-    {
-      'id': 71,
-      'author': 'ellen@example.com',
-      'author_display_name': 'Ellen*',
-      'rating': 5,
-      'comment': 'Loved the international cuisine nights.',
-      'likes': 5,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 72,
-      'author': 'fred@example.com',
-      'author_display_name': 'Fred*',
-      'rating': 4,
-      'comment': 'Great recipes and practical tips.',
-      'likes': 2,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 73,
-      'author': 'gina2@example.com',
-      'author_display_name': 'Gina2*',
-      'rating': 3,
-      'comment': 'Sometimes short on ingredients.',
-      'likes': 0,
-      'dislikes': 1,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 74,
-      'author': 'hugo@example.com',
-      'author_display_name': 'Hugo*',
-      'rating': 4,
-      'comment': 'Practical, fun and social.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-  'Entrepreneurship Society': [
-    {
-      'id': 81,
-      'author': 'iris@example.com',
-      'author_display_name': 'Iris*',
-      'rating': 4,
-      'comment': 'Excellent networking opportunities.',
-      'likes': 3,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 82,
-      'author': 'john@example.com',
-      'author_display_name': 'John*',
-      'rating': 3,
-      'comment': 'Good speakers but needs more workshops.',
-      'likes': 1,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 83,
-      'author': 'kira@example.com',
-      'author_display_name': 'Kira*',
-      'rating': 5,
-      'comment': 'Loved the pitch nights.',
-      'likes': 4,
-      'dislikes': 0,
-      'user_reaction': null,
-      'can_react': true,
-    },
-    {
-      'id': 84,
-      'author': 'leo@example.com',
-      'author_display_name': 'Leo*',
-      'rating': 2,
-      'comment': 'Not enough hands-on mentoring.',
-      'likes': 0,
-      'dislikes': 2,
-      'user_reaction': null,
-      'can_react': true,
-    },
-  ],
-};
+class PollOptionView {
+  final int id;
+  final String text;
+  final int voteCount;
+  final double percentage;
+
+  const PollOptionView({
+    required this.id,
+    required this.text,
+    required this.voteCount,
+    required this.percentage,
+  });
+}
+
+class PollView {
+  final int id;
+  final String title;
+  final String description;
+  final DateTime opensAt;
+  final DateTime closesAt;
+  final bool isOpen;
+  final bool isClosed;
+  final int totalVotes;
+  final bool viewerHasVoted;
+  final int? userVoteOptionId;
+  final bool canVote;
+  final String? voteBlockReason;
+  final bool canManage;
+  final bool canDelete;
+  final String? deleteBlockReason;
+  final List<PollOptionView> options;
+
+  const PollView({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.opensAt,
+    required this.closesAt,
+    required this.isOpen,
+    required this.isClosed,
+    required this.totalVotes,
+    required this.viewerHasVoted,
+    required this.userVoteOptionId,
+    required this.canVote,
+    required this.voteBlockReason,
+    required this.canManage,
+    required this.canDelete,
+    required this.deleteBlockReason,
+    required this.options,
+  });
+}
+
+enum PollFormMode { create, edit }
 
 class SocietyDetailsPage extends StatefulWidget {
   final String name;
@@ -1527,7 +818,7 @@ class SocietyDetailsPage extends StatefulWidget {
   final String imageUrl;
   final IconData icon;
   final String? userEmail;
-  final String? userAuthToken;
+  final String? userAccountType;
   final bool initialJoined;
   final int initialMemberCount;
   final double initialAverageRating;
@@ -1541,7 +832,7 @@ class SocietyDetailsPage extends StatefulWidget {
     required this.imageUrl,
     required this.icon,
     this.userEmail,
-    this.userAuthToken,
+    this.userAccountType,
     this.initialJoined = false,
     this.initialMemberCount = 0,
     this.initialAverageRating = 0,
@@ -1558,11 +849,14 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   final TextEditingController _reviewName = TextEditingController();
   final TextEditingController _reviewComment = TextEditingController();
   final int _reviewCommentMaxLength = 500;
+  final int _pollDescriptionMaxLength = 500;
 
   bool _joined = false;
   bool _loadingReviews = false;
+  bool _loadingPolls = false;
   bool _isAdminViewer = false;
   bool _canCreateReview = false;
+  bool _canCreatePolls = false;
   String? _reviewBlockReason;
   int _rating = 5;
   int _memberCount = 0;
@@ -1570,6 +864,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   ReviewSortOption _reviewSort = ReviewSortOption.latest;
   int? _reviewMinRating;
   List<SocietyReview> _reviews = [];
+  List<PollView> _polls = [];
 
   @override
   void initState() {
@@ -1578,6 +873,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     _memberCount = widget.initialMemberCount;
     _averageRating = widget.initialAverageRating;
     _loadReviews();
+    _loadPolls();
     _checkMembership();
   }
 
@@ -1586,6 +882,420 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     _reviewName.dispose();
     _reviewComment.dispose();
     super.dispose();
+  }
+
+  PollView _mapPoll(Map<String, dynamic> source) {
+    final List<PollOptionView> options =
+        (source['options'] as List<dynamic>? ?? <dynamic>[])
+            .map((e) => e as Map<String, dynamic>)
+            .map(
+              (item) => PollOptionView(
+                id: (item['id'] as int?) ?? 0,
+                text: (item['text'] as String?) ?? '',
+                voteCount: (item['vote_count'] as int?) ?? 0,
+                percentage: ((item['percentage'] as num?) ?? 0).toDouble(),
+              ),
+            )
+            .toList();
+
+    return PollView(
+      id: (source['id'] as int?) ?? 0,
+      title: (source['title'] as String?) ?? 'Untitled Poll',
+      description: (source['description'] as String?) ?? '',
+      opensAt:
+          DateTime.tryParse(source['opens_at']?.toString() ?? '') ??
+          DateTime.now(),
+      closesAt:
+          DateTime.tryParse(source['closes_at']?.toString() ?? '') ??
+          DateTime.now(),
+      isOpen: source['is_open'] == true,
+      isClosed: source['is_closed'] == true,
+      totalVotes: (source['total_votes'] as int?) ?? 0,
+      viewerHasVoted: source['viewer_has_voted'] == true,
+      userVoteOptionId: source['user_vote_option_id'] as int?,
+      canVote: source['can_vote'] == true,
+      voteBlockReason: source['vote_block_reason']?.toString(),
+      canManage: source['can_manage'] == true,
+      canDelete: source['can_delete'] == true,
+      deleteBlockReason: source['delete_block_reason']?.toString(),
+      options: options,
+    );
+  }
+
+  Future<void> _loadPolls() async {
+    setState(() {
+      _loadingPolls = true;
+    });
+
+    final result = await _societyService.getPolls(
+      societyName: widget.name,
+      viewerEmail: widget.userEmail,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final List<dynamic> raw = result['polls'] as List<dynamic>? ?? [];
+      setState(() {
+        _polls = raw
+            .map((e) => e as Map<String, dynamic>)
+            .map(_mapPoll)
+            .toList();
+        _canCreatePolls = result['can_create_polls'] == true;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? 'Could not load polls.'),
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _loadingPolls = false;
+      });
+    }
+  }
+
+  Future<void> _voteInPoll(PollView poll, PollOptionView option) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to vote.')),
+      );
+      return;
+    }
+
+    if (!poll.canVote) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            poll.voteBlockReason ?? 'Voting is not available for this poll.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final result = await _societyService.votePoll(
+      userEmail: email,
+      pollId: poll.id,
+      optionId: option.id,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']?.toString() ?? 'Could not submit vote.'),
+      ),
+    );
+
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
+  }
+
+  Future<void> _deletePoll(PollView poll) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    if (!poll.canDelete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            poll.deleteBlockReason ?? 'Poll deletion is currently blocked.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete poll?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final result = await _societyService.deletePoll(
+      actorEmail: email,
+      pollId: poll.id,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']?.toString() ?? 'Could not delete poll.'),
+      ),
+    );
+
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
+  }
+
+  Future<void> _openPollForm({PollView? existing}) async {
+    final email = widget.userEmail;
+    if (email == null || email.isEmpty) return;
+
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descController = TextEditingController(
+      text: existing?.description ?? '',
+    );
+    DateTime opensAt = existing?.opensAt.toLocal() ??
+        DateTime.now().add(const Duration(hours: 24));
+    DateTime closesAt = existing?.closesAt.toLocal() ??
+        DateTime.now().add(const Duration(days: 2));
+
+    final List<TextEditingController> optionControllers =
+        (existing?.options ??
+                const <PollOptionView>[
+                  PollOptionView(
+                    id: 0,
+                    text: '',
+                    voteCount: 0,
+                    percentage: 0,
+                  ),
+                  PollOptionView(
+                    id: 0,
+                    text: '',
+                    voteCount: 0,
+                    percentage: 0,
+                  ),
+                ])
+            .map((o) => TextEditingController(text: o.text))
+            .toList();
+
+    final bool? submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(existing == null ? 'Create poll' : 'Edit poll'),
+            content: SizedBox(
+              width: 540,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: descController,
+                      maxLength: _pollDescriptionMaxLength,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 30),
+                                ),
+                                initialDate: opensAt,
+                              );
+                              if (picked == null) return;
+                              setDialogState(() {
+                                opensAt = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  opensAt.hour,
+                                  opensAt.minute,
+                                );
+                              });
+                            },
+                            icon: const Icon(Icons.event),
+                            label: Text(
+                              'Open: ${opensAt.toLocal().toString().substring(0, 16)}',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 30),
+                                ),
+                                initialDate: closesAt,
+                              );
+                              if (picked == null) return;
+                              setDialogState(() {
+                                closesAt = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  closesAt.hour,
+                                  closesAt.minute,
+                                );
+                              });
+                            },
+                            icon: const Icon(Icons.event_available),
+                            label: Text(
+                              'Close: ${closesAt.toLocal().toString().substring(0, 16)}',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    for (int i = 0; i < optionControllers.length; i++) ...[
+                      TextField(
+                        controller: optionControllers[i],
+                        decoration: InputDecoration(
+                          labelText: 'Option ${i + 1}',
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            setDialogState(() {
+                              optionControllers.add(TextEditingController());
+                            });
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add option'),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton.icon(
+                          onPressed: optionControllers.length > 2
+                              ? () {
+                                  setDialogState(() {
+                                    optionControllers.removeLast().dispose();
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.remove),
+                          label: const Text('Remove option'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(existing == null ? 'Create' : 'Save'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (submitted != true) {
+      for (final c in optionControllers) {
+        c.dispose();
+      }
+      titleController.dispose();
+      descController.dispose();
+      return;
+    }
+
+    final options = optionControllers
+        .map((c) => c.text.trim())
+        .where((o) => o.isNotEmpty)
+        .toList();
+
+    final duration = closesAt.difference(opensAt);
+    if (duration < const Duration(hours: 24) ||
+        duration > const Duration(days: 7)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Poll duration must be between 24 hours and 7 days.'),
+        ),
+      );
+      for (final c in optionControllers) {
+        c.dispose();
+      }
+      titleController.dispose();
+      descController.dispose();
+      return;
+    }
+
+    final Map<String, dynamic> result = existing == null
+        ? await _societyService.createPoll(
+            creatorEmail: email,
+            societyName: widget.name,
+            title: titleController.text.trim(),
+            description: descController.text.trim(),
+            opensAt: opensAt,
+            closesAt: closesAt,
+            options: options,
+          )
+        : await _societyService.updatePoll(
+            editorEmail: email,
+            pollId: existing.id,
+            title: titleController.text.trim(),
+            description: descController.text.trim(),
+            opensAt: opensAt,
+            closesAt: closesAt,
+            options: options,
+          );
+
+    for (final c in optionControllers) {
+      c.dispose();
+    }
+    titleController.dispose();
+    descController.dispose();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']?.toString() ?? 'Poll request complete.'),
+      ),
+    );
+
+    if (result['success'] == true) {
+      await _loadPolls();
+    }
   }
 
   Future<void> _checkMembership() async {
@@ -1614,7 +1324,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     final result = await _societyService.getReviews(
       societyName: widget.name,
       viewerEmail: widget.userEmail,
-      authToken: widget.userAuthToken,
       sort: switch (_reviewSort) {
         ReviewSortOption.latest => 'latest',
         ReviewSortOption.rating => 'rating',
@@ -1624,23 +1333,47 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     );
     if (!mounted) return;
 
-    // Prefer backend reviews; fall back to seeded mock reviews when empty/unavailable
-    final List<dynamic> rawFromBackend = (result['success'] == true)
-        ? (result['reviews'] as List<dynamic>? ?? [])
-        : [];
+    if (result['success'] == true) {
+      final List<dynamic> raw = result['reviews'] as List<dynamic>? ?? [];
+      final List<SocietyReview> reviews = raw
+          .map((e) => e as Map<String, dynamic>)
+          .map(
+            (m) => SocietyReview(
+              id: (m['id'] as int?) ?? 0,
+              author: (m['author'] as String?) ?? 'Anonymous',
+              authorDisplayName:
+                  (m['author_display_name'] as String?) ?? 'Anonymous',
+              rating: (m['rating'] as int?) ?? 5,
+              comment: (m['comment'] as String?) ?? '',
+              likes: (m['likes'] as int?) ?? 0,
+              dislikes: (m['dislikes'] as int?) ?? 0,
+              userReaction: m['user_reaction'] as String?,
+              canReact: m['can_react'] == true,
+              adminResponseText:
+                  (m['admin_response'] as Map<String, dynamic>?)?['text']
+                      as String?,
+              adminResponderName:
+                  (m['admin_response']
+                          as Map<String, dynamic>?)?['admin_display_name']
+                      as String?,
+            ),
+          )
+          .toList();
 
-    List<Map<String, dynamic>> rawMaps = rawFromBackend
-        .map((e) => e as Map<String, dynamic>)
-        .toList(growable: true);
+      final double average = reviews.isEmpty
+          ? _averageRating
+          : reviews.map((r) => r.rating).reduce((a, b) => a + b) /
+                reviews.length;
 
-    if (rawMaps.isEmpty) {
-      final seeded = _seededReviewsData[widget.name];
-      if (seeded != null && seeded.isNotEmpty) {
-        rawMaps = List<Map<String, dynamic>>.from(seeded);
-      }
-    }
-
-    if (rawMaps.isEmpty) {
+      setState(() {
+        _reviews = reviews;
+        _averageRating = average;
+        _isAdminViewer = result['viewer_is_admin'] == true;
+        _canCreateReview = result['can_create_review'] == true;
+        _reviewBlockReason = result['review_block_reason']?.toString();
+      });
+      widget.onAverageRatingChanged?.call(_averageRating);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1649,43 +1382,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
         ),
       );
     }
-
-    final List<SocietyReview> reviews = rawMaps
-        .map(
-          (m) => SocietyReview(
-            id: (m['id'] as int?) ?? 0,
-            author: (m['author'] as String?) ?? 'Anonymous',
-            authorDisplayName:
-                (m['author_display_name'] as String?) ?? 'Anonymous',
-            rating: (m['rating'] as int?) ?? 5,
-            comment: (m['comment'] as String?) ?? '',
-            likes: (m['likes'] as int?) ?? 0,
-            dislikes: (m['dislikes'] as int?) ?? 0,
-            userReaction: m['user_reaction'] as String?,
-            canReact: m['can_react'] == true,
-            adminResponseText:
-                (m['admin_response'] as Map<String, dynamic>?)?['text']
-                    as String?,
-            adminResponderName:
-                (m['admin_response']
-                        as Map<String, dynamic>?)?['admin_display_name']
-                    as String?,
-          ),
-        )
-        .toList();
-
-    final double average = reviews.isEmpty
-        ? _averageRating
-        : reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
-
-    setState(() {
-      _reviews = reviews;
-      _averageRating = average;
-      _isAdminViewer = result['viewer_is_admin'] == true;
-      _canCreateReview = result['can_create_review'] == true;
-      _reviewBlockReason = result['review_block_reason']?.toString();
-    });
-    widget.onAverageRatingChanged?.call(_averageRating);
 
     if (mounted) {
       setState(() {
@@ -1706,11 +1402,17 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       return;
     }
 
+    if (!review.canReact) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reaction already used for this review.')),
+      );
+      return;
+    }
+
     final result = await _societyService.reactToReview(
       email: email,
       reviewId: review.id,
       reactionType: reactionType,
-      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1723,7 +1425,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
             likes: (result['likes'] as int?) ?? item.likes,
             dislikes: (result['dislikes'] as int?) ?? item.dislikes,
             userReaction: result['user_reaction']?.toString(),
-            canReact: true,
+            canReact: false,
           );
         }).toList();
       });
@@ -1765,7 +1467,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     final result = await _societyService.deleteReviewAsAdmin(
       adminEmail: email,
       reviewId: review.id,
-      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1826,7 +1527,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       adminEmail: email,
       reviewId: review.id,
       responseText: responseText,
-      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1954,7 +1654,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       societyName: widget.name,
       rating: _rating,
       comment: comment,
-      authToken: widget.userAuthToken,
     );
 
     if (!mounted) return;
@@ -1985,147 +1684,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
-  String _monthLabel(String monthKey) {
-    final parts = monthKey.split('-');
-    if (parts.length != 2) return monthKey;
-
-    final year = int.tryParse(parts[0]);
-    final month = int.tryParse(parts[1]);
-    if (year == null || month == null || month < 1 || month > 12) {
-      return monthKey;
-    }
-
-    const names = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${names[month - 1]} $year';
-  }
-
-  Future<void> _showReviewAnalyticsDialog() async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in as an admin to view analytics.'),
-        ),
-      );
-      return;
-    }
-
-    final result = await _societyService.getReviewAnalytics(
-      societyName: widget.name,
-      viewerEmail: email,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not load review analytics.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final List<dynamic> raw = result['trends'] as List<dynamic>? ?? [];
-    final trends = raw
-        .map((item) => item as Map<String, dynamic>)
-        .toList(growable: false);
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Monthly Review Trends'),
-        content: SizedBox(
-          width: 420,
-          child: trends.isEmpty
-              ? const Text('No review data available yet for this society.')
-              : SingleChildScrollView(
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Month')),
-                      DataColumn(label: Text('Avg Rating')),
-                      DataColumn(label: Text('Reviews')),
-                    ],
-                    rows: trends
-                        .map(
-                          (trend) => DataRow(
-                            cells: [
-                              DataCell(
-                                Text(
-                                  _monthLabel(trend['month']?.toString() ?? ''),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  (trend['avg_rating'] as num? ?? 0)
-                                      .toStringAsFixed(1),
-                                ),
-                              ),
-                              DataCell(Text('${trend['review_count'] ?? 0}')),
-                            ],
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openNotificationsPage() {
-    if (!_joined) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Join this society to view Events & Polls.'),
-        ),
-      );
-      return;
-    }
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SocietyNotificationsPage(
-          societyName: widget.name,
-          societyIcon: widget.icon,
-          userEmail: widget.userEmail,
-          userAuthToken: widget.userAuthToken,
-        ),
-      ),
-    );
-  }
-
-  void _openMembersPage() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            MembersPage(societyName: widget.name, userEmail: widget.userEmail),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2135,9 +1693,8 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
             expandedHeight: 240,
             pinned: true,
             backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            iconTheme: const IconThemeData(color: Colors.white),
             flexibleSpace: FlexibleSpaceBar(
+              title: Text(widget.name),
               background: Image.network(
                 widget.imageUrl,
                 fit: BoxFit.cover,
@@ -2200,38 +1757,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                       ),
                     ),
                   ),
-                  if (_isAdminViewer) ...[
-                    const SizedBox(height: 12),
-                    Card(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withOpacity(0.45),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Admin tools',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Quick access to review trends for this society.',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 10),
-                            FilledButton.icon(
-                              onPressed: _showReviewAnalyticsDialog,
-                              icon: const Icon(Icons.insights_outlined),
-                              label: const Text('View review analytics'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed: _toggleJoin,
@@ -2244,18 +1769,141 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                       foregroundColor: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _joined ? _openNotificationsPage : null,
-                    icon: const Icon(Icons.notifications_active_outlined),
-                    label: const Text('Open events & polls'),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Polls',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      if (_canCreatePolls)
+                        FilledButton.icon(
+                          onPressed: () => _openPollForm(),
+                          icon: const Icon(Icons.add),
+                          label: const Text('New poll'),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _openMembersPage,
-                    icon: const Icon(Icons.group),
-                    label: const Text('Members'),
-                  ),
+                  if (_loadingPolls)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_polls.isEmpty)
+                    Text(
+                      'No polls yet.',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    )
+                  else
+                    ..._polls.map(
+                      (poll) => Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      poll.title,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ),
+                                  if (poll.isOpen)
+                                    const Chip(label: Text('Open'))
+                                  else
+                                    const Chip(label: Text('Closed')),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(poll.description),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Votes: ${poll.totalVotes} | Opens: ${poll.opensAt.toLocal().toString().substring(0, 16)} | Closes: ${poll.closesAt.toLocal().toString().substring(0, 16)}',
+                                style: TextStyle(color: Colors.grey.shade700),
+                              ),
+                              const SizedBox(height: 10),
+                              ...poll.options.map(
+                                (option) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(option.text),
+                                            const SizedBox(height: 4),
+                                            LinearProgressIndicator(
+                                              value: option.percentage / 100,
+                                              minHeight: 7,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${option.voteCount} votes (${option.percentage.toStringAsFixed(1)}%)',
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      OutlinedButton(
+                                        onPressed: poll.canVote
+                                            ? () => _voteInPoll(poll, option)
+                                            : null,
+                                        child: const Text('Vote'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (!poll.canVote && poll.voteBlockReason != null)
+                                Text(
+                                  poll.voteBlockReason!,
+                                  style: TextStyle(color: Colors.grey.shade700),
+                                ),
+                              if (poll.canManage || poll.canDelete) ...[
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: [
+                                    if (poll.canManage)
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _openPollForm(existing: poll),
+                                        icon: const Icon(Icons.edit_outlined),
+                                        label: const Text('Edit'),
+                                      ),
+                                    TextButton.icon(
+                                      onPressed: () => _deletePoll(poll),
+                                      icon: const Icon(Icons.delete_outline),
+                                      label: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                                if (!poll.canDelete &&
+                                    poll.deleteBlockReason != null)
+                                  Text(
+                                    poll.deleteBlockReason!,
+                                    style:
+                                        TextStyle(color: Colors.orange.shade800),
+                                  ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   Text(
                     'Reviews',
@@ -2570,1112 +2218,6 @@ class _DetailStat extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class SocietyNotificationsPage extends StatefulWidget {
-  final String societyName;
-  final IconData societyIcon;
-  final String? userEmail;
-  final String? userAuthToken;
-
-  const SocietyNotificationsPage({
-    super.key,
-    required this.societyName,
-    required this.societyIcon,
-    this.userEmail,
-    this.userAuthToken,
-  });
-
-  @override
-  State<SocietyNotificationsPage> createState() =>
-      _SocietyNotificationsPageState();
-}
-
-class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
-  final SocietyService _societyService = SocietyService();
-
-  bool _loading = true;
-  bool _canCreatePoll = false;
-  bool _canCreateInfo = false;
-  List<_SocietyPoll> _polls = [];
-  List<_SocietyInfo> _infoItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPolls();
-  }
-
-  Future<void> _loadPolls() async {
-    setState(() {
-      _loading = true;
-    });
-
-    final result = await _societyService.getPolls(
-      societyName: widget.societyName,
-      viewerEmail: widget.userEmail,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final List<dynamic> raw = result['polls'] as List<dynamic>? ?? [];
-      final List<dynamic> rawInfo =
-          result['info_items'] as List<dynamic>? ?? [];
-      setState(() {
-        _polls =
-            raw
-                .map((item) => item as Map<String, dynamic>)
-                .map(_SocietyPoll.fromJson)
-                .toList()
-              ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        _infoItems =
-            rawInfo
-                .map((item) => item as Map<String, dynamic>)
-                .map(_SocietyInfo.fromJson)
-                .toList()
-              ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        _canCreatePoll = result['can_create_poll'] == true;
-        _canCreateInfo = result['can_create_info'] == true;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not load polls.',
-          ),
-        ),
-      );
-    }
-
-    if (mounted) {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _voteOnPoll(_SocietyPoll poll, _SocietyPollOption option) async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in before voting.')),
-      );
-      return;
-    }
-
-    if (poll.viewerVoteOptionId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You can only vote once per poll.')),
-      );
-      return;
-    }
-
-    final result = await _societyService.votePoll(
-      email: email,
-      pollId: poll.id,
-      optionId: option.id,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? 'Vote recorded.'),
-        ),
-      );
-      await _loadPolls();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not vote on poll.',
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _showCreatePollDialog() async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in as an admin to create polls.'),
-        ),
-      );
-      return;
-    }
-
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final optionsController = TextEditingController();
-    final durationController = TextEditingController(text: '60');
-
-    final bool? submit = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create poll'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Poll title',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descriptionController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: optionsController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Options (one per line)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: durationController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Time limit in hours',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-
-    if (submit != true) {
-      titleController.dispose();
-      descriptionController.dispose();
-      optionsController.dispose();
-      durationController.dispose();
-      return;
-    }
-
-    final title = titleController.text.trim();
-    final description = descriptionController.text.trim();
-    final options = optionsController.text
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
-    final durationHours = int.tryParse(durationController.text.trim());
-
-    titleController.dispose();
-    descriptionController.dispose();
-    optionsController.dispose();
-    durationController.dispose();
-
-    if (title.isEmpty ||
-        options.length < 2 ||
-        durationHours == null ||
-        durationHours < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Enter title, at least 2 options, and a valid time limit.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final result = await _societyService.createPoll(
-      adminEmail: email,
-      societyName: widget.societyName,
-      title: title,
-      description: description,
-      options: options,
-      durationHours: durationHours,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? 'Poll created.'),
-        ),
-      );
-      await _loadPolls();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not create poll.',
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _showCreateInfoDialog() async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in as an admin to add information.'),
-        ),
-      );
-      return;
-    }
-
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
-
-    final bool? submit = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add information'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: contentController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Information',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Post'),
-          ),
-        ],
-      ),
-    );
-
-    if (submit != true) {
-      titleController.dispose();
-      contentController.dispose();
-      return;
-    }
-
-    final title = titleController.text.trim();
-    final content = contentController.text.trim();
-
-    titleController.dispose();
-    contentController.dispose();
-
-    if (content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter information text before posting.')),
-      );
-      return;
-    }
-
-    final result = await _societyService.createInfo(
-      adminEmail: email,
-      societyName: widget.societyName,
-      title: title,
-      content: content,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? 'Information posted.'),
-        ),
-      );
-      await _loadPolls();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not post information.',
-          ),
-        ),
-      );
-    }
-  }
-
-  String _timestampLabel(DateTime timestamp) {
-    final local = timestamp.toLocal();
-    final dd = local.day.toString().padLeft(2, '0');
-    final mm = local.month.toString().padLeft(2, '0');
-    final yy = (local.year % 100).toString().padLeft(2, '0');
-    final hh = local.hour.toString().padLeft(2, '0');
-    final min = local.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yy\n$hh:$min';
-  }
-
-  String _monthLabel(String monthKey) {
-    final parts = monthKey.split('-');
-    if (parts.length != 2) return monthKey;
-
-    final year = int.tryParse(parts[0]);
-    final month = int.tryParse(parts[1]);
-    if (year == null || month == null || month < 1 || month > 12) {
-      return monthKey;
-    }
-
-    const names = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${names[month - 1]} $year';
-  }
-
-  Future<void> _showReviewAnalyticsDialog() async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in as an admin to view analytics.'),
-        ),
-      );
-      return;
-    }
-
-    final result = await _societyService.getReviewAnalytics(
-      societyName: widget.societyName,
-      viewerEmail: email,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not load review analytics.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final List<dynamic> raw = result['trends'] as List<dynamic>? ?? [];
-    final trends = raw
-        .map((item) => item as Map<String, dynamic>)
-        .map(_MonthlyReviewTrend.fromJson)
-        .toList();
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Monthly Review Trends'),
-        content: SizedBox(
-          width: 420,
-          child: trends.isEmpty
-              ? const Text('No review data available yet for this society.')
-              : SingleChildScrollView(
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Month')),
-                      DataColumn(label: Text('Avg Rating')),
-                      DataColumn(label: Text('Reviews')),
-                    ],
-                    rows: trends
-                        .map(
-                          (trend) => DataRow(
-                            cells: [
-                              DataCell(Text(_monthLabel(trend.month))),
-                              DataCell(
-                                Text(trend.avgRating.toStringAsFixed(1)),
-                              ),
-                              DataCell(Text('${trend.reviewCount}')),
-                            ],
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showAddOptionDialog(_SocietyPoll poll) async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) return;
-
-    final controller = TextEditingController();
-    final String? optionText = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add poll option'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Option text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-
-    if (optionText == null || optionText.isEmpty) return;
-
-    final result = await _societyService.editPoll(
-      adminEmail: email,
-      pollId: poll.id,
-      action: 'add_option',
-      optionText: optionText,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result['message']?.toString() ?? 'Poll updated.')),
-    );
-    if (result['success'] == true) {
-      await _loadPolls();
-    }
-  }
-
-  Future<void> _showDeleteOptionDialog(_SocietyPoll poll) async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) return;
-
-    if (poll.options.length <= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Poll must keep at least 2 options.')),
-      );
-      return;
-    }
-
-    final int? optionId = await showDialog<int>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Delete which option?'),
-        children: poll.options
-            .map(
-              (option) => SimpleDialogOption(
-                onPressed: () => Navigator.of(context).pop(option.id),
-                child: Text('${option.text} (${option.votes})'),
-              ),
-            )
-            .toList(),
-      ),
-    );
-
-    if (optionId == null) return;
-
-    final result = await _societyService.editPoll(
-      adminEmail: email,
-      pollId: poll.id,
-      action: 'delete_option',
-      optionId: optionId,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result['message']?.toString() ?? 'Poll updated.')),
-    );
-    if (result['success'] == true) {
-      await _loadPolls();
-    }
-  }
-
-  Future<void> _deletePoll(_SocietyPoll poll) async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) return;
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete poll?'),
-        content: const Text('This will permanently delete this poll.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    final result = await _societyService.deletePoll(
-      adminEmail: email,
-      pollId: poll.id,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result['message']?.toString() ?? 'Poll deleted.')),
-    );
-    if (result['success'] == true) {
-      await _loadPolls();
-    }
-  }
-
-  Future<void> _deleteInfo(_SocietyInfo info) async {
-    final email = widget.userEmail;
-    if (email == null || email.isEmpty) return;
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete message?'),
-        content: const Text('This will permanently delete this message.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    final result = await _societyService.deleteInfo(
-      adminEmail: email,
-      infoId: info.id,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message']?.toString() ?? 'Message deleted.'),
-      ),
-    );
-    if (result['success'] == true) {
-      await _loadPolls();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.societyName} Events & Polls'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        actions: [
-          if (_canCreatePoll || _canCreateInfo)
-            IconButton(
-              tooltip: 'Review analytics',
-              onPressed: _showReviewAnalyticsDialog,
-              icon: const Icon(Icons.insights_outlined),
-            ),
-          if (_canCreateInfo)
-            IconButton(
-              tooltip: 'Add information',
-              onPressed: _showCreateInfoDialog,
-              icon: const Icon(Icons.post_add_outlined),
-            ),
-          if (_canCreatePoll)
-            IconButton(
-              tooltip: 'Create poll',
-              onPressed: _showCreatePollDialog,
-              icon: const Icon(Icons.add_chart_outlined),
-            ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadPolls,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.1),
-                      child: Icon(
-                        widget.societyIcon,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${widget.societyName} updates',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_infoItems.isEmpty && _polls.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Text(
-                    (_canCreatePoll || _canCreateInfo)
-                        ? 'No posts yet. Use the top buttons to add information or a poll.'
-                        : 'No posts available right now.',
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                ),
-              )
-            else
-              ..._polls.map(
-                (poll) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 74,
-                          child: Text(
-                            _timestampLabel(poll.createdAt),
-                            style: TextStyle(color: Colors.grey.shade700),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      poll.title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Chip(
-                                        visualDensity: VisualDensity.compact,
-                                        label: Text(
-                                          poll.isOpen
-                                              ? 'Poll Open'
-                                              : 'Poll Closed',
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      if (poll.isOpen)
-                                        PollCountdown(closesAt: poll.closesAt),
-                                    ],
-                                  ),
-                                  if (_canCreatePoll)
-                                    PopupMenuButton<String>(
-                                      tooltip: 'Manage poll',
-                                      onSelected: (value) async {
-                                        if (value == 'add_option') {
-                                          await _showAddOptionDialog(poll);
-                                        } else if (value == 'delete_option') {
-                                          await _showDeleteOptionDialog(poll);
-                                        } else if (value == 'delete_poll') {
-                                          await _deletePoll(poll);
-                                        }
-                                      },
-                                      itemBuilder: (context) => const [
-                                        PopupMenuItem<String>(
-                                          value: 'add_option',
-                                          child: Text('Add option'),
-                                        ),
-                                        PopupMenuItem<String>(
-                                          value: 'delete_option',
-                                          child: Text('Delete option'),
-                                        ),
-                                        PopupMenuItem<String>(
-                                          value: 'delete_poll',
-                                          child: Text('Delete poll'),
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                              ),
-                              if (poll.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(poll.description),
-                              ],
-                              const SizedBox(height: 8),
-                              Text(
-                                'Total votes: ${poll.totalVotes}',
-                                style: TextStyle(color: Colors.grey.shade700),
-                              ),
-                              const SizedBox(height: 10),
-                              ...poll.options.map(
-                                (option) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: OutlinedButton.icon(
-                                    onPressed:
-                                        (!poll.isOpen ||
-                                            poll.viewerVoteOptionId != null)
-                                        ? null
-                                        : () => _voteOnPoll(poll, option),
-                                    icon: Icon(
-                                      poll.viewerVoteOptionId == option.id
-                                          ? Icons.check_circle
-                                          : Icons.how_to_vote_outlined,
-                                    ),
-                                    label: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        '${option.text} (${option.votes})',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (poll.viewerVoteOptionId != null)
-                                Text(
-                                  'Your vote has been recorded.',
-                                  style: TextStyle(
-                                    color: Colors.green.shade700,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            if (_infoItems.isNotEmpty && _polls.isNotEmpty)
-              const SizedBox(height: 6),
-            ..._infoItems.map(
-              (info) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 74,
-                        child: Text(
-                          _timestampLabel(info.createdAt),
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    info.title.isEmpty ? 'Message' : info.title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                                const Chip(
-                                  visualDensity: VisualDensity.compact,
-                                  label: Text('Info'),
-                                ),
-                                if (_canCreateInfo)
-                                  IconButton(
-                                    tooltip: 'Delete message',
-                                    onPressed: () => _deleteInfo(info),
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(info.content),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Posted by ${info.adminDisplayName}',
-                              style: TextStyle(color: Colors.grey.shade700),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SocietyPoll {
-  final int id;
-  final String title;
-  final String description;
-  final DateTime createdAt;
-  final DateTime closesAt;
-  final bool isOpen;
-  final int totalVotes;
-  final int? viewerVoteOptionId;
-  final List<_SocietyPollOption> options;
-
-  const _SocietyPoll({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.createdAt,
-    required this.closesAt,
-    required this.isOpen,
-    required this.totalVotes,
-    required this.viewerVoteOptionId,
-    required this.options,
-  });
-
-  factory _SocietyPoll.fromJson(Map<String, dynamic> json) {
-    final rawOptions = json['options'] as List<dynamic>? ?? [];
-    return _SocietyPoll(
-      id: (json['id'] as int?) ?? 0,
-      title: (json['title'] as String?) ?? 'Untitled poll',
-      description: (json['description'] as String?) ?? '',
-      createdAt:
-          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
-          DateTime.now(),
-      closesAt:
-          DateTime.tryParse((json['closes_at'] as String?) ?? '') ??
-          DateTime.now(),
-      isOpen: json['is_open'] == true,
-      totalVotes: (json['total_votes'] as int?) ?? 0,
-      viewerVoteOptionId: json['viewer_vote_option_id'] as int?,
-      options: rawOptions
-          .map((item) => item as Map<String, dynamic>)
-          .map(_SocietyPollOption.fromJson)
-          .toList(),
-    );
-  }
-}
-
-class _MonthlyReviewTrend {
-  final String month;
-  final double avgRating;
-  final int reviewCount;
-
-  const _MonthlyReviewTrend({
-    required this.month,
-    required this.avgRating,
-    required this.reviewCount,
-  });
-
-  factory _MonthlyReviewTrend.fromJson(Map<String, dynamic> json) {
-    return _MonthlyReviewTrend(
-      month: (json['month'] as String?) ?? '',
-      avgRating: ((json['avg_rating'] as num?) ?? 0).toDouble(),
-      reviewCount: (json['review_count'] as int?) ?? 0,
-    );
-  }
-}
-
-class PollCountdown extends StatefulWidget {
-  final DateTime closesAt;
-
-  const PollCountdown({super.key, required this.closesAt});
-
-  @override
-  State<PollCountdown> createState() => _PollCountdownState();
-}
-
-class _PollCountdownState extends State<PollCountdown> {
-  late Duration _remaining;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _updateRemaining();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-  }
-
-  void _updateRemaining() {
-    final now = DateTime.now().toUtc();
-    final closes = widget.closesAt.toUtc();
-    _remaining = closes.difference(now);
-    if (_remaining.isNegative) _remaining = Duration.zero;
-  }
-
-  void _tick() {
-    if (!mounted) return;
-    setState(() {
-      _updateRemaining();
-    });
-    if (_remaining == Duration.zero) {
-      _timer?.cancel();
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  String _format(Duration d) {
-    if (d.inDays > 0) return '${d.inDays}d ${d.inHours.remainder(24)}h';
-    if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
-    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '${mm}:${ss}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      _remaining == Duration.zero ? 'Ended' : 'Ends in ${_format(_remaining)}',
-      style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
-    );
-  }
-}
-
-class _SocietyPollOption {
-  final int id;
-  final String text;
-  final int votes;
-
-  const _SocietyPollOption({
-    required this.id,
-    required this.text,
-    required this.votes,
-  });
-
-  factory _SocietyPollOption.fromJson(Map<String, dynamic> json) {
-    return _SocietyPollOption(
-      id: (json['id'] as int?) ?? 0,
-      text: (json['text'] as String?) ?? '',
-      votes: (json['votes'] as int?) ?? 0,
-    );
-  }
-}
-
-class _SocietyInfo {
-  final int id;
-  final String title;
-  final String content;
-  final String adminDisplayName;
-  final DateTime createdAt;
-
-  const _SocietyInfo({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.adminDisplayName,
-    required this.createdAt,
-  });
-
-  factory _SocietyInfo.fromJson(Map<String, dynamic> json) {
-    return _SocietyInfo(
-      id: (json['id'] as int?) ?? 0,
-      title: (json['title'] as String?) ?? 'Information',
-      content: (json['content'] as String?) ?? '',
-      adminDisplayName: (json['admin_display_name'] as String?) ?? 'Admin',
-      createdAt:
-          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
-          DateTime.now(),
     );
   }
 }

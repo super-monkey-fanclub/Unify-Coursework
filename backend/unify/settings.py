@@ -122,3 +122,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Optional key that allows first-party dev account bootstrap at registration.
+# Leave empty to disable bootstrap.
+DEV_BOOTSTRAP_KEY = os.getenv('UNIFY_DEV_BOOTSTRAP_KEY', 'set-me-for-local-dev')
+DEFAULT_DEV_EMAIL = os.getenv('UNIFY_DEFAULT_DEV_EMAIL', 'folao.dev@unify.local')
+DEFAULT_DEV_PASSWORD = os.getenv('UNIFY_DEFAULT_DEV_PASSWORD', 'DevPass123!')
+DEFAULT_DEV_NAME = os.getenv('UNIFY_DEFAULT_DEV_NAME', 'Unify Dev')

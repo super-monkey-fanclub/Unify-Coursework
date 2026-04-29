@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     ACCOUNT_TYPE_CHOICES = (
-        ('regular', 'Regular User'),
+        ('regular', 'Regular'),
         ('society_admin', 'Society Admin'),
         ('dev', 'Developer'),
     )
@@ -65,7 +65,6 @@ class Poll(models.Model):
     opens_at = models.DateTimeField()
     closes_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
-    ended_posted_as_info = models.BooleanField(default=False)
 
 class PollOption(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
@@ -77,16 +76,8 @@ class PollVote(models.Model):
     option = models.ForeignKey(PollOption, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
-class SocietyInfo(models.Model):
-    society = models.ForeignKey(Society, on_delete=models.CASCADE)
-    admin = models.ForeignKey(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=200, blank=True, default='')
-    content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.society.name}: {self.title}"
+    class Meta:
+        unique_together = ('user', 'poll')
 
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -108,8 +99,14 @@ class ReviewResponse(models.Model):
     response_text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ('review',)
+
 class ReviewReaction(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     review = models.ForeignKey(Review, on_delete=models.CASCADE)
     reaction_type = models.CharField(max_length=20, choices=[('like', 'Like'), ('dislike', 'Dislike')])
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'review')
