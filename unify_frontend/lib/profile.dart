@@ -29,6 +29,12 @@ class _AuthPageState extends State<AuthPage> {
   final TextEditingController _regEmail = TextEditingController();
   final TextEditingController _regPassword = TextEditingController();
   final TextEditingController _regConfirm = TextEditingController();
+  final TextEditingController _regBootstrapKey = TextEditingController();
+
+  final TextEditingController _devBootstrapKey = TextEditingController();
+  final TextEditingController _devTargetEmail = TextEditingController();
+  final TextEditingController _devSocietyName = TextEditingController();
+  String _devTargetRole = 'society_admin';
 
   @override
   void dispose() {
@@ -38,6 +44,10 @@ class _AuthPageState extends State<AuthPage> {
     _regEmail.dispose();
     _regPassword.dispose();
     _regConfirm.dispose();
+    _regBootstrapKey.dispose();
+    _devBootstrapKey.dispose();
+    _devTargetEmail.dispose();
+    _devSocietyName.dispose();
     super.dispose();
   }
 
@@ -54,6 +64,11 @@ class _AuthPageState extends State<AuthPage> {
   // ── Logged-in view ─────────────────────────────────────────────────────────
   Widget _buildLoggedInView() {
     final email = widget.currentUser?['email'] as String? ?? '';
+    final accountType =
+        widget.currentUser?['account_type'] as String? ?? 'regular';
+    final canCreatePolls = widget.currentUser?['can_create_polls'] == true;
+    final bool isDev = accountType == 'dev';
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -69,13 +84,132 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 8),
             Text(
               email,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 10),
+            Text('Account type: $accountType'),
+            const SizedBox(height: 6),
+            Text('Can create polls: ${canCreatePolls ? 'Yes' : 'No'}'),
+            if (isDev) ...[
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Developer Tools',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _devTargetEmail,
+                decoration: const InputDecoration(
+                  labelText: 'Target user email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: _devTargetRole,
+                decoration: const InputDecoration(
+                  labelText: 'Target role',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'regular', child: Text('Regular')),
+                  DropdownMenuItem(
+                    value: 'society_admin',
+                    child: Text('Society Admin'),
+                  ),
+                  DropdownMenuItem(value: 'dev', child: Text('Developer')),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _devTargetRole = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _devSocietyName,
+                decoration: const InputDecoration(
+                  labelText: 'Society (optional, for admin/member role sync)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        final target = _devTargetEmail.text.trim();
+                        if (target.isEmpty) {
+                          _showMessage('Enter a target user email.');
+                          return;
+                        }
+
+                        setState(() => _isLoading = true);
+                        final result = await _authService.updateUserRole(
+                          devEmail: email,
+                          targetEmail: target,
+                          targetAccountType: _devTargetRole,
+                          societyName: _devSocietyName.text.trim(),
+                        );
+                        setState(() => _isLoading = false);
+
+                        _showMessage(
+                          result['message']?.toString() ??
+                              (result['success'] == true
+                                  ? 'Role updated.'
+                                  : 'Role update failed.'),
+                        );
+                      },
+                icon: const Icon(Icons.admin_panel_settings),
+                label: const Text('Apply Role Update'),
+              ),
+            ],
             const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _devBootstrapKey,
+              decoration: const InputDecoration(
+                labelText: 'Dev bootstrap key',
+                border: OutlineInputBorder(),
+                helperText: 'Use to create/reset a developer account quickly.',
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      final key = _devBootstrapKey.text.trim();
+                      if (key.isEmpty) {
+                        _showMessage('Enter the bootstrap key first.');
+                        return;
+                      }
+                      setState(() => _isLoading = true);
+                      final result = await _authService.ensureDevAccount(
+                        bootstrapKey: key,
+                        email: email,
+                      );
+                      setState(() => _isLoading = false);
+                      _showMessage(
+                        result['message']?.toString() ??
+                            (result['success'] == true
+                                ? 'Developer account ready.'
+                                : 'Could not bootstrap developer account.'),
+                      );
+                      if (result['success'] == true && mounted) {
+                        Navigator.of(context).pop(result['user']);
+                      }
+                    },
+              icon: const Icon(Icons.developer_mode),
+              label: const Text('Make This Account Dev'),
+            ),
+            const SizedBox(height: 14),
             ElevatedButton.icon(
               onPressed: () {
                 // Pop back to the caller indicating sign-out explicitly.
@@ -233,6 +367,16 @@ class _AuthPageState extends State<AuthPage> {
                 return null;
               },
             ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _regBootstrapKey,
+              decoration: const InputDecoration(
+                labelText: 'Dev bootstrap key (optional)',
+                border: OutlineInputBorder(),
+                helperText:
+                    'If valid, this account is created as a developer account.',
+              ),
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _isLoading
@@ -245,6 +389,7 @@ class _AuthPageState extends State<AuthPage> {
                         name: _regName.text.trim(),
                         email: _regEmail.text.trim(),
                         password: _regPassword.text,
+                        bootstrapKey: _regBootstrapKey.text.trim(),
                       );
                       setState(() => _isLoading = false);
 
@@ -278,13 +423,12 @@ class _AuthPageState extends State<AuthPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
-          isLoggedIn
-              ? 'Account'
-              : (_showSignUp ? 'Sign Up' : 'Login'),
+          isLoggedIn ? 'Account' : (_showSignUp ? 'Sign Up' : 'Login'),
         ),
       ),
-      body:
-          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
+      body: isLoggedIn
+          ? _buildLoggedInView()
+          : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }

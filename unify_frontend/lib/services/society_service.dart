@@ -2,27 +2,9 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'api_config.dart';
-
 /// Handles joining societies and managing memberships.
 class SocietyService {
-  static String get _baseUrl => '${ApiConfig.baseUrl}/api/societies';
-
-  Map<String, String> _jsonHeaders({String? authToken}) {
-    final headers = <String, String>{'Content-Type': 'application/json'};
-    if (authToken != null && authToken.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $authToken';
-    }
-    return headers;
-  }
-
-  Map<String, dynamic> _connectionError(Object error) {
-    return {
-      'success': false,
-      'message':
-          'Could not connect to the server. (${error.runtimeType}: $error)',
-    };
-  }
+  static const String _baseUrl = 'http://127.0.0.1:8000/api/societies';
 
   /// Join a society for the given user email.
   /// Returns a map with 'success' and 'message'.
@@ -53,8 +35,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not join society.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
@@ -85,8 +67,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load societies.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
@@ -95,7 +77,6 @@ class SocietyService {
   Future<Map<String, dynamic>> getReviews({
     required String societyName,
     String? viewerEmail,
-    String? authToken,
     String sort = 'latest',
     int? minRating,
   }) async {
@@ -112,9 +93,7 @@ class SocietyService {
         '$_baseUrl/reviews/',
       ).replace(queryParameters: query);
 
-      final response = await http
-          .get(uri, headers: _jsonHeaders(authToken: authToken))
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
@@ -135,82 +114,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load reviews.',
       };
-    } catch (error) {
-      return _connectionError(error);
-    }
-  }
-
-  /// Fetch members for a society.
-  /// Returns a map with 'success' and on success 'members' as List<Map>.
-  Future<Map<String, dynamic>> getMembers({
-    required String societyName,
-    String? viewerEmail,
-  }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$_baseUrl/members/'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'society_name': societyName,
-              if (viewerEmail != null && viewerEmail.isNotEmpty)
-                'viewer_email': viewerEmail,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        final List<dynamic> raw = body['members'] as List<dynamic>? ?? [];
-        return {
-          'success': true,
-          'members': raw.cast<Map<String, dynamic>>(),
-          'viewer_is_admin': body['viewer_is_admin'] == true,
-        };
-      }
-
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Could not load members.',
-      };
-    } catch (error) {
-      return _connectionError(error);
-    }
-  }
-
-  Future<Map<String, dynamic>> promoteMember({
-    required String adminEmail,
-    required String societyName,
-    required int memberId,
-  }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$_baseUrl/members/promote/'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'admin_email': adminEmail,
-              'society_name': societyName,
-              'member_id': memberId,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': body['message']};
-      }
-
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Could not promote member.',
-      };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
@@ -221,20 +126,17 @@ class SocietyService {
     required String societyName,
     required int rating,
     required String comment,
-    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/add/'),
-            headers: _jsonHeaders(authToken: authToken),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'email': email,
               'society_name': societyName,
               'rating': rating,
               'comment': comment,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -253,29 +155,26 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not submit review.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
-  /// Submit or update a reaction (like/dislike) to a review.
+  /// Submit a one-time reaction (like/dislike) to a review.
   Future<Map<String, dynamic>> reactToReview({
     required String email,
     required int reviewId,
     required String reactionType,
-    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/react/'),
-            headers: _jsonHeaders(authToken: authToken),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'email': email,
               'review_id': reviewId,
               'reaction_type': reactionType,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -297,50 +196,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not react to review.',
       };
-    } catch (error) {
-      return _connectionError(error);
-    }
-  }
-
-  /// Fetch monthly review analytics for a society (admin only).
-  Future<Map<String, dynamic>> getReviewAnalytics({
-    required String societyName,
-    String? viewerEmail,
-    String? authToken,
-  }) async {
-    try {
-      final Map<String, String> query = {'society': societyName};
-      if (viewerEmail != null && viewerEmail.isNotEmpty) {
-        query['viewer_email'] = viewerEmail;
-      }
-
-      final uri = Uri.parse(
-        '$_baseUrl/reviews/analytics/',
-      ).replace(queryParameters: query);
-
-      final response = await http
-          .get(uri, headers: _jsonHeaders(authToken: authToken))
-          .timeout(const Duration(seconds: 10));
-
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        final List<dynamic> raw = body['trends'] as List<dynamic>? ?? [];
-        return {
-          'success': true,
-          'society_id': body['society_id'],
-          'society_name': body['society_name'],
-          'trends': raw.cast<Map<String, dynamic>>(),
-        };
-      }
-
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Could not load review analytics.',
-      };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
@@ -348,18 +205,15 @@ class SocietyService {
   Future<Map<String, dynamic>> deleteReviewAsAdmin({
     required String adminEmail,
     required int reviewId,
-    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/delete/'),
-            headers: _jsonHeaders(authToken: authToken),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'admin_email': adminEmail,
               'review_id': reviewId,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -378,8 +232,8 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not delete review.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
@@ -388,19 +242,16 @@ class SocietyService {
     required String adminEmail,
     required int reviewId,
     required String responseText,
-    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/reviews/respond/'),
-            headers: _jsonHeaders(authToken: authToken),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'admin_email': adminEmail,
               'review_id': reviewId,
               'response_text': responseText,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -420,16 +271,15 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not submit response.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
-  /// Fetch polls for a society.
+  /// List polls for a society.
   Future<Map<String, dynamic>> getPolls({
     required String societyName,
     String? viewerEmail,
-    String? authToken,
   }) async {
     try {
       final Map<String, String> query = {'society': societyName};
@@ -438,25 +288,16 @@ class SocietyService {
       }
 
       final uri = Uri.parse('$_baseUrl/polls/').replace(queryParameters: query);
-      final response = await http
-          .get(uri, headers: _jsonHeaders(authToken: authToken))
-          .timeout(const Duration(seconds: 10));
-
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200) {
-        final List<dynamic> raw = body['polls'] as List<dynamic>? ?? [];
-        final List<dynamic> rawInfo =
-            body['info_items'] as List<dynamic>? ?? [];
         return {
           'success': true,
-          'polls': raw.cast<Map<String, dynamic>>(),
-          'info_items': rawInfo.cast<Map<String, dynamic>>(),
-          'viewer_is_member': body['viewer_is_member'] == true,
-          'viewer_is_admin': body['viewer_is_admin'] == true,
-          'can_create_poll': body['can_create_poll'] == true,
-          'can_create_info': body['can_create_info'] == true,
+          'polls': (body['polls'] as List<dynamic>? ?? [])
+              .cast<Map<String, dynamic>>(),
+          'can_create_polls': body['can_create_polls'] == true,
         };
       }
 
@@ -464,42 +305,40 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load polls.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
-  /// Create a poll as a society admin.
+  /// Create a poll (dev/society-admin only).
   Future<Map<String, dynamic>> createPoll({
-    required String adminEmail,
+    required String creatorEmail,
     required String societyName,
     required String title,
     required String description,
+    required DateTime opensAt,
+    required DateTime closesAt,
     required List<String> options,
-    required int durationHours,
-    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/create/'),
-            headers: _jsonHeaders(authToken: authToken),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'admin_email': adminEmail,
+              'creator_email': creatorEmail,
               'society_name': societyName,
               'title': title,
               'description': description,
+              'opens_at': opensAt.toUtc().toIso8601String(),
+              'closes_at': closesAt.toUtc().toIso8601String(),
               'options': options,
-              'duration_hours': durationHours,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
             }),
           )
           .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {
           'success': true,
@@ -512,133 +351,40 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not create poll.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
-  /// Create a society information post as an admin.
-  Future<Map<String, dynamic>> createInfo({
-    required String adminEmail,
-    required String societyName,
+  /// Update an existing poll.
+  Future<Map<String, dynamic>> updatePoll({
+    required String editorEmail,
+    required int pollId,
     required String title,
-    required String content,
-    String? authToken,
+    required String description,
+    required DateTime opensAt,
+    required DateTime closesAt,
+    required List<String> options,
   }) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/polls/info/create/'),
-            headers: _jsonHeaders(authToken: authToken),
+            Uri.parse('$_baseUrl/polls/update/'),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'admin_email': adminEmail,
-              'society_name': societyName,
-              'title': title,
-              'content': content,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {
-          'success': true,
-          'message': body['message'] ?? 'Information posted.',
-          'info': body['info'],
-        };
-      }
-
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Could not post information.',
-      };
-    } catch (error) {
-      return _connectionError(error);
-    }
-  }
-
-  /// Vote on a poll once.
-  Future<Map<String, dynamic>> votePoll({
-    required String email,
-    required int pollId,
-    required int optionId,
-    String? authToken,
-  }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$_baseUrl/polls/vote/'),
-            headers: _jsonHeaders(authToken: authToken),
-            body: jsonEncode({
-              'email': email,
+              'editor_email': editorEmail,
               'poll_id': pollId,
-              'option_id': optionId,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
+              'title': title,
+              'description': description,
+              'opens_at': opensAt.toUtc().toIso8601String(),
+              'closes_at': closesAt.toUtc().toIso8601String(),
+              'options': options,
             }),
           )
           .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {
-          'success': true,
-          'message': body['message'] ?? 'Vote recorded.',
-          'poll': body['poll'],
-        };
-      }
-
-      return {
-        'success': false,
-        'message': body['error'] ?? 'Could not vote on poll.',
-      };
-    } catch (error) {
-      return _connectionError(error);
-    }
-  }
-
-  /// Edit a poll by adding or deleting an option.
-  Future<Map<String, dynamic>> editPoll({
-    required String adminEmail,
-    required int pollId,
-    required String action,
-    String? optionText,
-    int? optionId,
-    String? authToken,
-  }) async {
-    try {
-      final Map<String, dynamic> payload = {
-        'admin_email': adminEmail,
-        'poll_id': pollId,
-        'action': action,
-      };
-      if (optionText != null) {
-        payload['option_text'] = optionText;
-      }
-      if (optionId != null) {
-        payload['option_id'] = optionId;
-      }
-      if (authToken != null && authToken.isNotEmpty) {
-        payload['auth_token'] = authToken;
-      }
-
-      final response = await http
-          .post(
-            Uri.parse('$_baseUrl/polls/edit/'),
-            headers: _jsonHeaders(authToken: authToken),
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {
           'success': true,
@@ -651,34 +397,27 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not update poll.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
-  /// Delete a poll as an admin.
+  /// Delete a poll.
   Future<Map<String, dynamic>> deletePoll({
-    required String adminEmail,
+    required String actorEmail,
     required int pollId,
-    String? authToken,
   }) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/polls/delete/'),
-            headers: _jsonHeaders(authToken: authToken),
-            body: jsonEncode({
-              'admin_email': adminEmail,
-              'poll_id': pollId,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
-            }),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'actor_email': actorEmail, 'poll_id': pollId}),
           )
           .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {'success': true, 'message': body['message'] ?? 'Poll deleted.'};
       }
@@ -687,47 +426,45 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not delete poll.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 
-  /// Delete a society information message as an admin.
-  Future<Map<String, dynamic>> deleteInfo({
-    required String adminEmail,
-    required int infoId,
-    String? authToken,
+  /// Vote in a poll.
+  Future<Map<String, dynamic>> votePoll({
+    required String userEmail,
+    required int pollId,
+    required int optionId,
   }) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/polls/info/delete/'),
-            headers: _jsonHeaders(authToken: authToken),
+            Uri.parse('$_baseUrl/polls/vote/'),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'admin_email': adminEmail,
-              'info_id': infoId,
-              if (authToken != null && authToken.isNotEmpty)
-                'auth_token': authToken,
+              'user_email': userEmail,
+              'poll_id': pollId,
+              'option_id': optionId,
             }),
           )
           .timeout(const Duration(seconds: 10));
 
       final Map<String, dynamic> body =
           jsonDecode(response.body) as Map<String, dynamic>;
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {
           'success': true,
-          'message': body['message'] ?? 'Message deleted.',
+          'message': body['message'] ?? 'Vote recorded.',
         };
       }
 
       return {
         'success': false,
-        'message': body['error'] ?? 'Could not delete message.',
+        'message': body['error'] ?? 'Could not vote in poll.',
       };
-    } catch (error) {
-      return _connectionError(error);
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to the server.'};
     }
   }
 }
