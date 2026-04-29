@@ -1,38 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unify_frontend/main.dart';
+import 'package:unify_frontend/socieites.dart';
 
 void main() {
-  testWidgets('Submit a review on a society details page', (WidgetTester tester) async {
-    await tester.pumpWidget(const UnifyApp());
-    await tester.pumpAndSettle();
-
-    // Navigate to Societies and open a society
-    await tester.tap(find.text('Find societies'));
-    await tester.pumpAndSettle();
-    final artCard = find.ancestor(
-      of: find.text('Art Society'),
-      matching: find.byType(Card),
+  testWidgets('Society details shows member count and average rating', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SocietyDetailsPage(
+          name: 'Art Society',
+          description: 'Creative community.',
+          imageUrl:
+              'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
+          icon: Icons.palette,
+          initialMemberCount: 82,
+          initialAverageRating: 4.6,
+        ),
+      ),
     );
-    expect(artCard, findsOneWidget);
-    await tester.tap(artCard);
     await tester.pumpAndSettle();
 
-    // Fill review name and comment
-    final nameField = find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Name (optional)');
-    final commentField = find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Your review');
-    expect(nameField, findsOneWidget);
-    expect(commentField, findsOneWidget);
+    expect(find.text('Members'), findsOneWidget);
+    expect(find.text('82'), findsOneWidget);
+    expect(find.text('Average rating'), findsOneWidget);
+    expect(find.text('4.6'), findsOneWidget);
+  });
 
-    await tester.enterText(nameField, 'Tester');
-    await tester.enterText(commentField, 'This is a test review.');
+  testWidgets('Joined user can leave society with feedback message', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SocietyDetailsPage(
+          name: 'Art Society',
+          description: 'Creative community.',
+          imageUrl:
+              'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
+          icon: Icons.palette,
+          userEmail: 'student@port.ac.uk',
+          initialJoined: true,
+          initialMemberCount: 82,
+          initialAverageRating: 4.6,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Submit review'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Submit review'));
+    await tester.ensureVisible(find.text('Leave society'));
+    await tester.tap(find.text('Leave society'));
     await tester.pumpAndSettle();
 
-    expect(find.text('This is a test review.'), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Join society'), findsOneWidget);
   });
 }
