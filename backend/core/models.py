@@ -23,12 +23,19 @@ class User(AbstractUser):
         This avoids inserting an empty string for ``up_number`` which was
         triggering ``UNIQUE constraint failed: core_user.up_number`` errors
         when creating new users.
+        
+        Admin accounts use "A" prefix, regular accounts use "UP" prefix.
         """
         if not self.pk and not self.up_number:
             # Estimate the next primary key to derive a stable UP number.
             last_user = self.__class__.objects.order_by("-pk").first()
             next_id = (last_user.pk + 1) if last_user else 1
-            self.up_number = f"UP{next_id:06d}"
+            
+            # Use "A" prefix for admin accounts, "UP" for regular users
+            if self.account_type == 'society_admin':
+                self.up_number = f"A{next_id:06d}"
+            else:
+                self.up_number = f"UP{next_id:06d}"
 
         return super().save(*args, **kwargs)
 
@@ -36,10 +43,21 @@ class Society(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=50)
+    average_rating = models.FloatField(default=0.0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+    
+    def update_average_rating(self):
+        """Recalculate and save the average rating based on all reviews."""
+        reviews = Review.objects.filter(society=self)
+        if reviews.exists():
+            avg = sum(r.rating for r in reviews) / reviews.count()
+            self.average_rating = round(avg, 2)
+        else:
+            self.average_rating = 0.0
+        self.save()
 
 class Membership(models.Model):
     ROLE_CHOICES = (
@@ -64,6 +82,7 @@ class Poll(models.Model):
     description = models.CharField(max_length=500)
     opens_at = models.DateTimeField()
     closes_at = models.DateTimeField()
+    notified_closing_soon = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class PollOption(models.Model):
@@ -120,3 +139,32 @@ class ReviewReaction(models.Model):
 
     class Meta:
         unique_together = ('user', 'review')
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('poll_created', 'Poll Created'),
+        ('poll_deleted', 'Poll Deleted'),
+        ('poll_closing_soon', 'Poll Closing Soon'),
+        ('review_liked', 'Review Liked'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    related_poll = models.ForeignKey(Poll, on_delete=models.CASCADE, null=True, blank=True)
+    related_review = models.ForeignKey(Review, on_delete=models.CASCADE, null=True, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'is_read']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email}: {self.title}"

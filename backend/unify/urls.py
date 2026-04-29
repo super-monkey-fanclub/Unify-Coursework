@@ -1,20 +1,5 @@
-"""
-URL configuration for unify project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path
 
 from core.views import (
@@ -34,8 +19,30 @@ from core.views import (
     react_review_view,
     admin_delete_review_view,
     admin_respond_review_view,
+    update_account_view,
+    society_review_analytics_view,
+    get_notifications_view,
+    mark_notification_read_view,
+    mark_all_notifications_read_view,
+    check_closing_polls_view,
 )
+
+
+def home_view(request):
+    return JsonResponse(
+        {
+            "message": "Unify backend is running.",
+            "endpoints": {
+                "admin": "/admin/",
+                "auth": "/api/auth/register/",
+                "societies": "/api/societies/",
+            },
+        }
+    )
+
+
 urlpatterns = [
+    path("", home_view, name="home"),
     path("admin/", admin.site.urls),
     # Simple JSON API for sign up and login
     path("api/auth/register/", register_view, name="api-register"),
@@ -57,4 +64,12 @@ urlpatterns = [
     path("api/societies/reviews/react/", react_review_view, name="api-react-review"),
     path("api/societies/reviews/delete/", admin_delete_review_view, name="api-delete-review"),
     path("api/societies/reviews/respond/", admin_respond_review_view, name="api-respond-review"),
+    path("api/societies/reviews/analytics/", society_review_analytics_view, name="api-society-analytics"),
+    # Account management
+    path("api/auth/account/update/", update_account_view, name="api-update-account"),
+    # Notifications
+    path("api/notifications/", get_notifications_view, name="api-get-notifications"),
+    path("api/notifications/mark-read/", mark_notification_read_view, name="api-mark-notification-read"),
+    path("api/notifications/mark-all-read/", mark_all_notifications_read_view, name="api-mark-all-notifications-read"),
+    path("api/notifications/check-closing-polls/", check_closing_polls_view, name="api-check-closing-polls"),
 ]

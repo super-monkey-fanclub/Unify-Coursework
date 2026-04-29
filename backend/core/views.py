@@ -13,6 +13,7 @@ from django.views.decorators.http import require_http_methods
 
 from .models import (
     Membership,
+    Notification,
     Poll,
     PollOption,
     PollVote,
@@ -96,6 +97,59 @@ def _contains_offensive_language(comment: str) -> bool:
     return any(
         re.search(rf'\b{re.escape(term)}\b', lowered) for term in BANNED_REVIEW_TERMS
     )
+
+
+def _create_notification(user: User, notification_type: str, title: str, message: str, 
+                        poll: Poll | None = None, review: Review | None = None) -> Notification:
+    """Create a notification for a user."""
+    return Notification.objects.create(
+        user=user,
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        related_poll=poll,
+        related_review=review,
+    )
+
+
+def _notify_society_members(society: Society, notification_type: str, title: str, message: str,
+                           exclude_user: User | None = None, poll: Poll | None = None):
+    """Create notifications for all members of a society."""
+    members = Membership.objects.filter(society=society).select_related('user')
+    for membership in members:
+        if exclude_user and membership.user.id == exclude_user.id:
+            continue
+        _create_notification(
+            user=membership.user,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            poll=poll,
+        )
+
+
+def _check_and_notify_closing_polls():
+    """Check for polls closing in the next hour and notify members."""
+    now = timezone.now()
+    one_hour_later = now + timedelta(hours=1)
+    
+    # Find polls that close within the next hour but haven't been notified yet
+    closing_polls = Poll.objects.filter(
+        closes_at__lte=one_hour_later,
+        closes_at__gt=now,
+        notified_closing_soon=False,
+    ).select_related('society')
+    
+    for poll in closing_polls:
+        _notify_society_members(
+            society=poll.society,
+            notification_type='poll_closing_soon',
+            title=f"Poll Closing Soon: {poll.title}",
+            message=f"The poll '{poll.title}' will close in less than 1 hour. Vote now!",
+            poll=poll,
+        )
+        poll.notified_closing_soon = True
+        poll.save()
 
 
 def _parse_datetime(value: str) -> datetime | None:
@@ -261,6 +315,7 @@ def register_view(request: HttpRequest):
     email = _safe_text(data.get('email')).lower()
     password = data.get('password') or ''
     bootstrap_key = _safe_text(data.get('bootstrap_key'))
+    opt_in_email = data.get('opt_in_email', False)
 
     if not name or not email or not password:
         return JsonResponse({'error': 'All fields are required.'}, status=400)
@@ -291,6 +346,7 @@ def register_view(request: HttpRequest):
     user.account_type = account_type
     user.is_staff = is_staff
     user.is_superuser = is_superuser
+    user.opt_in_email = bool(opt_in_email)
     user.save()
 
     return JsonResponse(
@@ -617,6 +673,17 @@ def create_poll_view(request: HttpRequest):
         [PollOption(poll=poll, option_text=option) for option in options if option]
     )
 
+
+    # Notify society members about the new poll
+    _notify_society_members(
+        society=society,
+        notification_type='poll_created',
+        title=f"New Poll: {title}",
+        message=f"A new poll '{title}' has been created. Vote now!",
+        exclude_user=creator,
+        poll=poll,
+    )
+
     return JsonResponse(
         {
             'message': 'Poll created.',
@@ -624,7 +691,6 @@ def create_poll_view(request: HttpRequest):
         },
         status=201,
     )
-
 
 @csrf_exempt
 @require_http_methods(['POST'])
@@ -744,9 +810,20 @@ def delete_poll_view(request: HttpRequest):
             status=409,
         )
 
+
+    # Notify society members about poll deletion
+    society = poll.society
+    poll_title = poll.title
+    _notify_society_members(
+        society=society,
+        notification_type='poll_deleted',
+        title=f"Poll Deleted: {poll_title}",
+        message=f"The poll '{poll_title}' has been deleted.",
+        exclude_user=actor,
+    )
+    
     poll.delete()
     return JsonResponse({'message': 'Poll deleted.'}, status=200)
-
 
 @csrf_exempt
 @require_http_methods(['POST'])
@@ -962,6 +1039,9 @@ def add_review_view(request: HttpRequest):
         return JsonResponse({'error': block_reason}, status=403)
 
     review = Review.objects.create(user=user, society=society, rating=rating, comment=comment)
+    
+    # Update society average rating
+    society.update_average_rating()
 
     return JsonResponse(
         {
@@ -1026,6 +1106,16 @@ def react_review_view(request: HttpRequest):
     likes = ReviewReaction.objects.filter(review=review, reaction_type='like').count()
     dislikes = ReviewReaction.objects.filter(review=review, reaction_type='dislike').count()
 
+    # Notify review author if reaction is a like
+    if reaction_type == 'like':
+        _create_notification(
+            user=review.user,
+            notification_type='review_liked',
+            title=f"Your Review Was Liked",
+            message=f"{_author_display_name(user)} liked your review on {review.society.name}.",
+            review=review,
+        )
+
     return JsonResponse(
         {
             'message': 'Reaction recorded.',
@@ -1065,7 +1155,12 @@ def admin_delete_review_view(request: HttpRequest):
     if not _is_society_admin(admin_user, review.society):
         return JsonResponse({'error': 'Only society admins/dev users can delete reviews.'}, status=403)
 
+    society = review.society
     review.delete()
+    
+    # Update society average rating
+    society.update_average_rating()
+    
     return JsonResponse({'message': 'Review deleted.'}, status=200)
 
 
@@ -1572,4 +1667,230 @@ def vote_society_poll_view(request: HttpRequest):
             'poll': _serialize_poll(poll, user),
         },
         status=201,
+    )
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def update_account_view(request: HttpRequest):
+    """Update user account settings (email, password, opt_in_email)."""
+    data = _json_body(request)
+    
+    email = _safe_text(data.get('email')).lower()
+    current_password = data.get('current_password') or ''
+    new_password = data.get('new_password') or ''
+    new_email = _safe_text(data.get('new_email')).lower() if data.get('new_email') else None
+    opt_in_email = data.get('opt_in_email')
+    
+    if not email or not current_password:
+        return JsonResponse({'error': 'email and current_password are required.'}, status=400)
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found.'}, status=404)
+    
+    # Verify current password
+    if not user.check_password(current_password):
+        return JsonResponse({'error': 'Current password is incorrect.'}, status=401)
+    
+    # Update email if provided and different
+    if new_email and new_email != email:
+        if User.objects.filter(email=new_email).exists():
+            return JsonResponse({'error': 'An account with that email already exists.'}, status=409)
+        user.email = new_email
+        user.username = new_email
+    
+    # Update password if provided
+    if new_password:
+        user.set_password(new_password)
+    
+    # Update opt_in_email if provided
+    if opt_in_email is not None:
+        user.opt_in_email = bool(opt_in_email)
+    
+    user.save()
+    
+    return JsonResponse(
+        {
+            'message': 'Account updated successfully.',
+            'user': _user_payload(user),
+        },
+        status=200,
+    )
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def society_review_analytics_view(request: HttpRequest):
+    """Get analytics for a society's reviews (monthly trends)."""
+    from django.db.models import Count, Avg
+    
+    society_name = _safe_text(request.GET.get('society'))
+    if not society_name:
+        return JsonResponse({'error': 'society query parameter is required.'}, status=400)
+    
+    try:
+        society = Society.objects.get(name=society_name)
+    except Society.DoesNotExist:
+        return JsonResponse({'error': 'Society not found.'}, status=404)
+    
+    # Get reviews grouped by month
+    reviews = Review.objects.filter(society=society).order_by('created_at')
+    
+    if not reviews.exists():
+        return JsonResponse(
+            {
+                'society': society.name,
+                'total_reviews': 0,
+                'average_rating': 0.0,
+                'monthly_trends': [],
+            },
+            status=200,
+        )
+    
+    # Build monthly trends
+    trends = {}
+    for review in reviews:
+        month_key = review.created_at.strftime('%Y-%m')
+        if month_key not in trends:
+            trends[month_key] = {'count': 0, 'total_rating': 0}
+        trends[month_key]['count'] += 1
+        trends[month_key]['total_rating'] += review.rating
+    
+    monthly_trends = [
+        {
+            'month': month,
+            'review_count': data['count'],
+            'avg_rating': round(data['total_rating'] / data['count'], 2),
+        }
+        for month, data in sorted(trends.items())
+    ]
+    
+    total_reviews = reviews.count()
+    average_rating = round(sum(r.rating for r in reviews) / total_reviews, 2) if total_reviews > 0 else 0.0
+    
+    return JsonResponse(
+        {
+            'society': society.name,
+            'total_reviews': total_reviews,
+            'average_rating': average_rating,
+            'monthly_trends': monthly_trends,
+        },
+        status=200,
+    )
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def get_notifications_view(request: HttpRequest):
+    """Get notifications for the authenticated user."""
+    email = _safe_text(request.GET.get('email')).lower()
+    
+    if not email:
+        return JsonResponse({'error': 'email query parameter is required.'}, status=400)
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found.'}, status=404)
+    
+    # Get all notifications for the user, ordered by newest first
+    notifications = Notification.objects.filter(user=user).order_by('-created_at')[:50]
+    
+    notification_data = []
+    for notif in notifications:
+        data = {
+            'id': notif.id,
+            'type': notif.notification_type,
+            'title': notif.title,
+            'message': notif.message,
+            'is_read': notif.is_read,
+            'created_at': notif.created_at.isoformat(),
+        }
+        if notif.related_poll:
+            data['poll_id'] = notif.related_poll.id
+        if notif.related_review:
+            data['review_id'] = notif.related_review.id
+        notification_data.append(data)
+    
+    unread_count = Notification.objects.filter(user=user, is_read=False).count()
+    
+    return JsonResponse(
+        {
+            'notifications': notification_data,
+            'unread_count': unread_count,
+        },
+        status=200,
+    )
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def mark_notification_read_view(request: HttpRequest):
+    """Mark a notification as read."""
+    data = _json_body(request)
+    email = _safe_text(data.get('email')).lower()
+    notification_id_raw = data.get('notification_id')
+    
+    if not email or notification_id_raw is None:
+        return JsonResponse({'error': 'email and notification_id are required.'}, status=400)
+    
+    try:
+        notification_id = int(notification_id_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'notification_id must be an integer.'}, status=400)
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found.'}, status=404)
+    
+    try:
+        notification = Notification.objects.get(id=notification_id, user=user)
+    except Notification.DoesNotExist:
+        return JsonResponse({'error': 'Notification not found.'}, status=404)
+    
+    notification.is_read = True
+    notification.read_at = timezone.now()
+    notification.save()
+    
+    return JsonResponse({'message': 'Notification marked as read.'}, status=200)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def mark_all_notifications_read_view(request: HttpRequest):
+    """Mark all notifications for a user as read."""
+    data = _json_body(request)
+    email = _safe_text(data.get('email')).lower()
+    
+    if not email:
+        return JsonResponse({'error': 'email is required.'}, status=400)
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found.'}, status=404)
+    
+    unread_notifications = Notification.objects.filter(user=user, is_read=False)
+    count = unread_notifications.update(is_read=True, read_at=timezone.now())
+    
+    return JsonResponse(
+        {
+            'message': f'{count} notification(s) marked as read.',
+            'count': count,
+        },
+        status=200,
+    )
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def check_closing_polls_view(request: HttpRequest):
+    """Check for polls closing soon and create notifications."""
+    _check_and_notify_closing_polls()
+    return JsonResponse(
+        {'message': 'Closing poll check completed.'},
+        status=200,
     )
