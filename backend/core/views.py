@@ -293,12 +293,20 @@ def register_view(request: HttpRequest):
     if User.objects.filter(email=email).exists():
         return JsonResponse({'error': 'An account with that email already exists.'}, status=409)
 
+    # Support optional mailing-list opt-in from the client.
+    opt_in = data.get('opt_in_email')
+
     user = User.objects.create_user(
         username=email,
         email=email,
         password=password,
         account_type='regular',
     )
+    # Normalize and store opt-in preference when provided.
+    if isinstance(opt_in, bool):
+        user.opt_in_email = opt_in
+    elif isinstance(opt_in, str):
+        user.opt_in_email = opt_in.strip().lower() in ('1', 'true', 'yes')
     user.first_name = name
     user.save()
     auth_token = _issue_auth_token(user)
@@ -311,6 +319,7 @@ def register_view(request: HttpRequest):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'opt_in_email': user.opt_in_email,
                 'account_type': user.account_type,
                 'auth_token': auth_token,
             },
@@ -348,6 +357,68 @@ def login_view(request: HttpRequest):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'account_type': user.account_type,
+                'auth_token': auth_token,
+            },
+        },
+        status=200,
+    )
+
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def update_account_view(request: HttpRequest):
+    """Update the authenticated user's account fields: email, password, opt-in."""
+    data = _json_body(request)
+    user = _authenticated_user_from_request(request, data)
+    if not user:
+        return JsonResponse({'error': 'Authentication required.'}, status=401)
+
+    updated = False
+
+    # Email change
+    new_email = _safe_text(data.get('email')).lower()
+    if new_email and new_email != user.email:
+        if '@' not in new_email or '.' not in new_email:
+            return JsonResponse({'error': 'Enter a valid email address.'}, status=400)
+        if User.objects.filter(email=new_email).exclude(id=user.id).exists():
+            return JsonResponse({'error': 'An account with that email already exists.'}, status=409)
+        user.email = new_email
+        user.username = new_email
+        updated = True
+
+    # Password change
+    new_password = data.get('new_password')
+    if new_password:
+        current_password = data.get('current_password') or ''
+        if not user.check_password(current_password):
+            return JsonResponse({'error': 'Current password is incorrect.'}, status=403)
+        user.set_password(new_password)
+        updated = True
+
+    # Opt-in preference
+    if 'opt_in_email' in data:
+        opt_in = data.get('opt_in_email')
+        if isinstance(opt_in, bool):
+            user.opt_in_email = opt_in
+        elif isinstance(opt_in, str):
+            user.opt_in_email = opt_in.strip().lower() in ('1', 'true', 'yes')
+        updated = True
+
+    if updated:
+        user.save()
+
+    auth_token = _issue_auth_token(user)
+    return JsonResponse(
+        {
+            'message': 'Account updated.',
+            'auth_token': auth_token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'opt_in_email': user.opt_in_email,
                 'account_type': user.account_type,
                 'auth_token': auth_token,
             },

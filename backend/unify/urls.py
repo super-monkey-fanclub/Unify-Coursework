@@ -4,6 +4,7 @@ from django.urls import path
 from core.views import (
     register_view,
     login_view,
+    update_account_view,
     society_members_view,
     promote_member_view,
     join_society_view,
@@ -30,6 +31,7 @@ urlpatterns = [
     # Simple JSON API for sign up and login
     path("api/auth/register/", register_view, name="api-register"),
     path("api/auth/login/", login_view, name="api-login"),
+    path("api/auth/account/", update_account_view, name="api-update-account"),
     # Societies/memberships
     path("api/societies/join/", join_society_view, name="api-join-society"),
     path("api/societies/my/", my_societies_view, name="api-my-societies"),

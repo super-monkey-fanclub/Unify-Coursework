@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'services/auth_service.dart';
+import 'account_settings.dart';
 
 class AuthPage extends StatefulWidget {
   final Map<String, dynamic>? currentUser;
@@ -16,6 +17,7 @@ class _AuthPageState extends State<AuthPage> {
   bool _showSignUp = false;
 
   bool _isLoading = false;
+  bool _regOptIn = false;
 
   final AuthService _authService = AuthService();
 
@@ -76,13 +78,38 @@ class _AuthPageState extends State<AuthPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Pop back to the caller indicating sign-out explicitly.
-                Navigator.of(context).pop({'__logout__': true});
-              },
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign out'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // Open account settings and return updated user (if any)
+                    final res = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            // Lazy import to avoid cycles
+                            AccountSettingsPage(currentUser: widget.currentUser!),
+                      ),
+                    );
+                    if (res is Map<String, dynamic>) {
+                      // Return updated user back to the main app
+                      Navigator.of(context).pop(res);
+                      return;
+                    }
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Account Settings'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Pop back to the caller indicating sign-out explicitly.
+                    Navigator.of(context).pop({'__logout__': true});
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sign out'),
+                ),
+              ],
             ),
           ],
         ),
@@ -234,6 +261,13 @@ class _AuthPageState extends State<AuthPage> {
               },
             ),
             const SizedBox(height: 24),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Receive occasional emails about Unify updates'),
+              value: _regOptIn,
+              onChanged: (v) => setState(() => _regOptIn = v ?? false),
+            ),
+            const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _isLoading
                   ? null
@@ -245,6 +279,7 @@ class _AuthPageState extends State<AuthPage> {
                         name: _regName.text.trim(),
                         email: _regEmail.text.trim(),
                         password: _regPassword.text,
+                        optInEmail: _regOptIn,
                       );
                       setState(() => _isLoading = false);
 

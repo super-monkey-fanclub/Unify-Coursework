@@ -22,6 +22,7 @@ class AuthService {
     required String name,
     required String email,
     required String password,
+    bool optInEmail = false,
   }) async {
     try {
       final response = await http
@@ -32,6 +33,7 @@ class AuthService {
               'name': name,
               'email': email,
               'password': password,
+              'opt_in_email': optInEmail,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -73,6 +75,45 @@ class AuthService {
         return {'success': true, 'user': body['user']};
       }
       return {'success': false, 'message': body['error'] ?? 'Login failed.'};
+    } catch (error) {
+      return _connectionError(error);
+    }
+  }
+
+  /// Update the authenticated user's account.
+  /// `authToken` should be the user's `auth_token` returned at login/register.
+  Future<Map<String, dynamic>> updateAccount({
+    required String authToken,
+    String? email,
+    String? currentPassword,
+    String? newPassword,
+    bool? optInEmail,
+  }) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $authToken',
+      };
+
+      final body = <String, dynamic>{};
+      if (email != null) body['email'] = email;
+      if (currentPassword != null) body['current_password'] = currentPassword;
+      if (newPassword != null) body['new_password'] = newPassword;
+      if (optInEmail != null) body['opt_in_email'] = optInEmail;
+
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/account/'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> resBody = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return {'success': true, 'user': resBody['user']};
+      }
+      return {'success': false, 'message': resBody['error'] ?? 'Update failed.'};
     } catch (error) {
       return _connectionError(error);
     }
