@@ -2442,11 +2442,18 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
   bool _canCreateInfo = false;
   List<_SocietyPoll> _polls = [];
   List<_SocietyInfo> _infoItems = [];
+  List<_NotificationItem> _notifications = [];
 
   @override
   void initState() {
     super.initState();
-    _loadPolls();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() { _loading = true; });
+    await Future.wait([_loadPolls(), _loadNotifications()]);
+    if (mounted) setState(() { _loading = false; });
   }
 
   Future<void> _loadPolls() async {
@@ -2495,6 +2502,23 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     if (mounted) {
       setState(() {
         _loading = false;
+      });
+    }
+  }
+
+  Future<void> _loadNotifications() async {
+    final result = await _societyService.getNotifications(
+      societyName: widget.societyName,
+      viewerEmail: widget.userEmail,
+      authToken: widget.userAuthToken,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final List<dynamic> raw = result['notifications'] as List<dynamic>? ?? [];
+      setState(() {
+        _notifications = raw.map((e) => _NotificationItem.fromJson(e as Map<String, dynamic>)).toList();
       });
     }
   }
@@ -2843,49 +2867,57 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result['message']?.toString() ?? 'Could not load review analytics.',
+            result['message']?.toString() ?? 'Could not load analytics.',
           ),
         ),
       );
       return;
     }
 
-    final List<dynamic> raw = result['trends'] as List<dynamic>? ?? [];
-    final trends = raw
-        .map((item) => item as Map<String, dynamic>)
-        .map(_MonthlyReviewTrend.fromJson)
-        .toList();
+    // Get stats from response
+    final stats = result['stats'] as Map<String, dynamic>? ?? {};
+    final int totalMembers = stats['total_members'] as int? ?? 0;
+    final int adminCount = stats['admin_count'] as int? ?? 0;
+    final int totalAnnouncements = stats['total_announcements'] as int? ?? 0;
+    final int totalPolls = stats['total_polls'] as int? ?? 0;
+    final int totalReviews = stats['total_reviews'] as int? ?? 0;
+    final int totalReactions = stats['total_reactions'] as int? ?? 0;
 
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Monthly Review Trends'),
+        title: Text('${widget.societyName} Analytics', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.primary)),
         content: SizedBox(
-          width: 420,
-          child: trends.isEmpty
-              ? const Text('No review data available yet for this society.')
-              : SingleChildScrollView(
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Month')),
-                      DataColumn(label: Text('Avg Rating')),
-                      DataColumn(label: Text('Reviews')),
-                    ],
-                    rows: trends
-                        .map(
-                          (trend) => DataRow(
-                            cells: [
-                              DataCell(Text(_monthLabel(trend.month))),
-                              DataCell(
-                                Text(trend.avgRating.toStringAsFixed(1)),
-                              ),
-                              DataCell(Text('${trend.reviewCount}')),
-                            ],
-                          ),
-                        )
-                        .toList(),
-                  ),
+          width: 600,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Member Statistics
+                _buildStatCard(
+                  context,
+                  title: 'Members',
+                  stats: [
+                    _StatItem('Current Members', '$totalMembers', Icons.people),
+                    _StatItem('Current Admins', '$adminCount', Icons.admin_panel_settings),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                // Activity Statistics
+                _buildStatCard(
+                  context,
+                  title: 'Activity (All Time)',
+                  stats: [
+                    _StatItem('Announcements', '$totalAnnouncements', Icons.announcement),
+                    _StatItem('Polls', '$totalPolls', Icons.poll),
+                    _StatItem('Reviews', '$totalReviews', Icons.rate_review),
+                    _StatItem('Reactions', '$totalReactions', Icons.favorite),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -2894,6 +2926,61 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatCard(BuildContext context, {required String title, required List<_StatItem> stats}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 12),
+        Card(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Wrap(
+              spacing: 32,
+              runSpacing: 16,
+              children: stats.map((item) => _buildStatItem(context, item)).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(BuildContext context, _StatItem item) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(item.icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 10),
+            Text(
+              item.label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 30),
+          child: Text(
+            item.value,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3139,6 +3226,36 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            if (_notifications.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Notifications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      ..._notifications.map((n) => ListTile(
+                        title: Text(n.message, style: TextStyle(fontWeight: n.read ? FontWeight.normal : FontWeight.w700)),
+                        subtitle: Text(_timestampLabel(n.createdAt)),
+                        trailing: n.read ? null : TextButton(
+                          onPressed: () async {
+                            final res = await _societyService.markNotificationRead(notificationId: n.id, authToken: widget.userAuthToken);
+                            if (res['success'] == true) {
+                              await _loadNotifications();
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Marked read')));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Could not mark read')));
+                            }
+                          },
+                          child: const Text('Mark read'),
+                        ),
+                      ))
+                    ],
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
             if (_loading)
               const Center(child: CircularProgressIndicator())
@@ -3393,6 +3510,14 @@ class _SocietyPoll {
   }
 }
 
+class _StatItem {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _StatItem(this.label, this.value, this.icon);
+}
+
 class _MonthlyReviewTrend {
   final String month;
   final double avgRating;
@@ -3517,6 +3642,35 @@ class _SocietyInfo {
       createdAt:
           DateTime.tryParse((json['created_at'] as String?) ?? '') ??
           DateTime.now(),
+    );
+  }
+}
+
+class _NotificationItem {
+  final int id;
+  final String type;
+  final String message;
+  final String link;
+  final DateTime createdAt;
+  final bool read;
+
+  const _NotificationItem({
+    required this.id,
+    required this.type,
+    required this.message,
+    required this.link,
+    required this.createdAt,
+    required this.read,
+  });
+
+  factory _NotificationItem.fromJson(Map<String, dynamic> json) {
+    return _NotificationItem(
+      id: (json['id'] as int?) ?? 0,
+      type: (json['type'] as String?) ?? 'info',
+      message: (json['message'] as String?) ?? '',
+      link: (json['link'] as String?) ?? '',
+      createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ?? DateTime.now(),
+      read: (json['read'] as bool?) ?? false,
     );
   }
 }

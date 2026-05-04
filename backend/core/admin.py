@@ -12,6 +12,8 @@ from .models import (
     Review,
     ReviewResponse,
     ReviewReaction
+    ,
+    Notification,
 )
 
 
@@ -131,6 +133,7 @@ admin.site.register(SocietyInfo)
 admin.site.register(Review)
 admin.site.register(ReviewResponse)
 admin.site.register(ReviewReaction, ReviewReactionAdmin)
+admin.site.register(Notification)
 
 
 class PollOptionInline(admin.TabularInline):

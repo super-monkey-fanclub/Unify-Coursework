@@ -21,6 +21,7 @@ from .models import (
     ReviewResponse,
     Society,
     SocietyInfo,
+    Notification,
 )
 
 User = get_user_model()
@@ -298,6 +299,8 @@ def register_view(request: HttpRequest):
     if User.objects.filter(email=email).exists():
         return JsonResponse({'error': 'An account with that email already exists.'}, status=409)
 
+    opt_in = bool(data.get('opt_in_email', False))
+
     user = User.objects.create_user(
         username=email,
         email=email,
@@ -305,6 +308,7 @@ def register_view(request: HttpRequest):
         account_type='regular',
     )
     user.first_name = name
+    user.opt_in_email = opt_in
     user.save()
     auth_token = _issue_auth_token(user)
 
@@ -317,6 +321,7 @@ def register_view(request: HttpRequest):
                 'username': user.username,
                 'email': user.email,
                 'account_type': user.account_type,
+                'opt_in_email': user.opt_in_email,
                 'auth_token': auth_token,
             },
         },
@@ -701,6 +706,20 @@ def add_review_view(request: HttpRequest):
         comment=comment,
     )
 
+    # Notify society admins that a new review has been added
+    admin_members = Membership.objects.select_related('user').filter(society=society, role='admin')
+    for admin_member in admin_members:
+        try:
+            Notification.objects.create(
+                user=admin_member.user,
+                society=society,
+                notif_type='review',
+                message=f"New review for {society.name} by {user.email}",
+            )
+        except Exception:
+            # Fail silently to avoid breaking review creation
+            pass
+
     return JsonResponse(
         {
             'message': 'Review created',
@@ -819,6 +838,7 @@ def society_review_analytics_view(request: HttpRequest):
     if not _is_society_admin(viewer, society):
         return JsonResponse({'error': 'Only society admins can view review analytics.'}, status=403)
 
+    # Get trend data
     trend_rows = (
         Review.objects.filter(society=society)
         .annotate(month=TruncMonth('created_at'))
@@ -836,10 +856,26 @@ def society_review_analytics_view(request: HttpRequest):
         for row in trend_rows
     ]
 
+    # Get society statistics
+    total_members = Membership.objects.filter(society=society).count()
+    admin_count = Membership.objects.filter(society=society, role='admin').count()
+    total_announcements = SocietyInfo.objects.filter(society=society).count()
+    total_polls = Poll.objects.filter(society=society).count()
+    total_reviews = Review.objects.filter(society=society).count()
+    total_reactions = ReviewReaction.objects.filter(review__society=society).count()
+
     return JsonResponse(
         {
             'society_id': society.id,
             'society_name': society.name,
+            'stats': {
+                'total_members': total_members,
+                'admin_count': admin_count,
+                'total_announcements': total_announcements,
+                'total_polls': total_polls,
+                'total_reviews': total_reviews,
+                'total_reactions': total_reactions,
+            },
             'trends': trends,
         },
         status=200,
@@ -949,6 +985,138 @@ def admin_respond_review_view(request: HttpRequest):
         },
         status=201 if created else 200,
     )
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def get_notifications_view(request: HttpRequest):
+    society_name = _safe_text(request.GET.get('society'))
+    viewer_email = _safe_text(request.GET.get('viewer_email')).lower()
+
+    if not society_name:
+        return JsonResponse({'error': 'society query parameter is required.'}, status=400)
+
+    try:
+        society = Society.objects.get(name=society_name)
+    except Society.DoesNotExist:
+        return JsonResponse({'error': 'Society not found.'}, status=404)
+
+    viewer = _authenticated_user_from_request(request)
+    if viewer is None and viewer_email:
+        try:
+            viewer = User.objects.get(email=viewer_email)
+        except User.DoesNotExist:
+            viewer = None
+
+    if viewer is None:
+        return JsonResponse({'error': 'Authentication token or viewer_email is required.'}, status=401)
+
+    # Only members of the society should fetch its notifications
+    if not Membership.objects.filter(user=viewer, society=society).exists() and not _is_society_admin(viewer, society):
+        return JsonResponse({'error': 'Only society members can view notifications.'}, status=403)
+
+    notes = Notification.objects.filter(user=viewer, society=society).order_by('-created_at')
+    data = [
+        {
+            'id': n.id,
+            'type': n.notif_type,
+            'message': n.message,
+            'link': n.link,
+            'created_at': n.created_at.isoformat(),
+            'read': n.read,
+        }
+        for n in notes
+    ]
+
+    return JsonResponse({'notifications': data}, status=200)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def mark_notification_read_view(request: HttpRequest):
+    data = _json_body(request)
+    notif_id = data.get('notification_id')
+
+    user = _authenticated_user_from_request(request, data=data)
+    if user is None:
+        return JsonResponse({'error': 'Authentication token is required.'}, status=401)
+
+    if notif_id is None:
+        return JsonResponse({'error': 'notification_id is required.'}, status=400)
+
+    try:
+        nid = int(notif_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'notification_id must be an integer.'}, status=400)
+
+    try:
+        notif = Notification.objects.get(id=nid)
+    except Notification.DoesNotExist:
+        return JsonResponse({'error': 'Notification not found.'}, status=404)
+
+    if notif.user_id != user.id:
+        return JsonResponse({'error': 'You may only modify your own notifications.'}, status=403)
+
+    notif.read = True
+    notif.save(update_fields=['read'])
+
+    return JsonResponse({'message': 'Notification marked read.'}, status=200)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def account_settings_view(request: HttpRequest):
+    data = _json_body(request)
+
+    user = _authenticated_user_from_request(request, data=data)
+    # Allow fallback auth by email+current_password
+    if user is None:
+        email = _safe_text(data.get('email')).lower()
+        current_password = data.get('current_password') or ''
+        if email and current_password:
+            try:
+                candidate = User.objects.get(email=email)
+                if candidate.check_password(current_password):
+                    user = candidate
+            except User.DoesNotExist:
+                user = None
+
+    if user is None:
+        return JsonResponse({'error': 'Authentication required.'}, status=401)
+
+    new_email = _safe_text(data.get('new_email')).lower()
+    new_password = data.get('new_password') or ''
+    opt_in = data.get('opt_in_email')
+
+    updated = False
+    if new_email:
+        if '@' not in new_email or '.' not in new_email:
+            return JsonResponse({'error': 'Enter a valid email address.'}, status=400)
+        if User.objects.filter(email=new_email).exclude(id=user.id).exists():
+            return JsonResponse({'error': 'That email is already taken.'}, status=409)
+        user.email = new_email
+        user.username = new_email
+        updated = True
+
+    if new_password:
+        if len(new_password) < 8:
+            return JsonResponse({'error': 'Password must be at least 8 characters.'}, status=400)
+        user.set_password(new_password)
+        updated = True
+
+    if opt_in is not None:
+        # accept boolean or string
+        if isinstance(opt_in, str):
+            opt_bool = opt_in.lower() in {'1', 'true', 'yes'}
+        else:
+            opt_bool = bool(opt_in)
+        user.opt_in_email = opt_bool
+        updated = True
+
+    if updated:
+        user.save()
+
+    return JsonResponse({'message': 'Settings updated.', 'user': {'id': user.id, 'email': user.email, 'opt_in_email': user.opt_in_email}}, status=200)
 
 
 @csrf_exempt

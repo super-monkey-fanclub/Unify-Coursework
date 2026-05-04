@@ -123,6 +123,29 @@ class ReviewReaction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class Notification(models.Model):
+    NOTIF_TYPE_CHOICES = (
+        ('info', 'Info'),
+        ('review', 'Review'),
+        ('poll', 'Poll'),
+    )
+
+    # Recipient user for this notification
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    society = models.ForeignKey(Society, on_delete=models.CASCADE)
+    notif_type = models.CharField(max_length=20, choices=NOTIF_TYPE_CHOICES, default='info')
+    message = models.CharField(max_length=500)
+    link = models.CharField(max_length=500, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.society.name}: {self.message[:60]}"
+
+
 # Signals to keep `User.account_type` in sync with society admin memberships.
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'services/auth_service.dart';
+import 'account_settings.dart';
 
 class AuthPage extends StatefulWidget {
   final Map<String, dynamic>? currentUser;
@@ -16,6 +17,7 @@ class _AuthPageState extends State<AuthPage> {
   bool _showSignUp = false;
 
   bool _isLoading = false;
+  bool _regOptIn = false;
 
   final AuthService _authService = AuthService();
 
@@ -76,6 +78,20 @@ class _AuthPageState extends State<AuthPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () async {
+                // Open account settings page and refresh user on return
+                final updated = await Navigator.of(context).push<Map<String, dynamic>?>(
+                  MaterialPageRoute(builder: (_) => AccountSettingsPage(currentUser: widget.currentUser)),
+                );
+                if (updated != null && updated.containsKey('user')) {
+                  Navigator.of(context).pop(updated['user']);
+                }
+              },
+              icon: const Icon(Icons.settings),
+              label: const Text('Account settings'),
+            ),
+            const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: () {
                 // Pop back to the caller indicating sign-out explicitly.
@@ -233,7 +249,14 @@ class _AuthPageState extends State<AuthPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              value: _regOptIn,
+              onChanged: (v) => setState(() => _regOptIn = v ?? false),
+              title: const Text('Join the mailing list for updates'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _isLoading
                   ? null
@@ -245,6 +268,7 @@ class _AuthPageState extends State<AuthPage> {
                         name: _regName.text.trim(),
                         email: _regEmail.text.trim(),
                         password: _regPassword.text,
+                        optInEmail: _regOptIn,
                       );
                       setState(() => _isLoading = false);
 

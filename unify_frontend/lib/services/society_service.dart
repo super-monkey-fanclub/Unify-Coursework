@@ -331,6 +331,7 @@ class SocietyService {
           'success': true,
           'society_id': body['society_id'],
           'society_name': body['society_name'],
+          'stats': body['stats'] as Map<String, dynamic>? ?? {},
           'trends': raw.cast<Map<String, dynamic>>(),
         };
       }
@@ -464,6 +465,59 @@ class SocietyService {
         'success': false,
         'message': body['error'] ?? 'Could not load polls.',
       };
+    } catch (error) {
+      return _connectionError(error);
+    }
+  }
+
+  /// Fetch notifications for a society (for the requesting user).
+  Future<Map<String, dynamic>> getNotifications({
+    required String societyName,
+    String? viewerEmail,
+    String? authToken,
+  }) async {
+    try {
+      final Map<String, String> query = {'society': societyName};
+      if (viewerEmail != null && viewerEmail.isNotEmpty) {
+        query['viewer_email'] = viewerEmail;
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/notifications/').replace(queryParameters: query);
+      final response = await http
+          .get(uri, headers: _jsonHeaders(authToken: authToken))
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final List<dynamic> raw = body['notifications'] as List<dynamic>? ?? [];
+        return {
+          'success': true,
+          'notifications': raw.cast<Map<String, dynamic>>(),
+        };
+      }
+
+      return {'success': false, 'message': body['error'] ?? 'Could not load notifications.'};
+    } catch (error) {
+      return _connectionError(error);
+    }
+  }
+
+  /// Mark a specific notification as read for the current user.
+  Future<Map<String, dynamic>> markNotificationRead({
+    required int notificationId,
+    String? authToken,
+  }) async {
+    try {
+      final response = await http
+          .post(Uri.parse('${ApiConfig.baseUrl}/api/notifications/mark_read/'), headers: _jsonHeaders(authToken: authToken), body: jsonEncode({'notification_id': notificationId}))
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': body['message'] ?? 'Marked read.'};
+      }
+      return {'success': false, 'message': body['error'] ?? 'Could not mark notification.'};
     } catch (error) {
       return _connectionError(error);
     }

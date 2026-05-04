@@ -22,6 +22,9 @@ from core.views import (
     delete_society_poll_view,
     delete_society_info_view,
     vote_society_poll_view,
+    get_notifications_view,
+    mark_notification_read_view,
+    account_settings_view,
 )
 
 
@@ -51,4 +54,9 @@ urlpatterns = [
     path("api/societies/polls/info/create/", create_society_info_view, name="api-create-society-info"),
     path("api/societies/polls/info/delete/", delete_society_info_view, name="api-delete-society-info"),
     path("api/societies/polls/vote/", vote_society_poll_view, name="api-vote-society-poll"),
+    # Notifications
+    path("api/notifications/", get_notifications_view, name="api-get-notifications"),
+    path("api/notifications/mark_read/", mark_notification_read_view, name="api-mark-notification-read"),
+    # Account settings
+    path("api/auth/settings/", account_settings_view, name="api-account-settings"),
 ]
