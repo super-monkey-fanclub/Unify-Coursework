@@ -94,27 +94,28 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
               return FutureBuilder<Map<String, dynamic>>(
                 future: _analyticsFuture,
                 builder: (context, analyticsSnapshot) {
-              if (memberSnapshot.connectionState == ConnectionState.waiting ||
+                  if (memberSnapshot.connectionState ==
+                          ConnectionState.waiting ||
                       pollSnapshot.connectionState == ConnectionState.waiting ||
                       analyticsSnapshot.connectionState ==
                           ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              // Extract member data
-              int totalMembers = 0;
-              int adminCount = 0;
-              if (memberSnapshot.hasData &&
-                  memberSnapshot.data!['success'] == true) {
-                final List<dynamic> members =
-                    memberSnapshot.data!['members'] as List<dynamic>? ?? [];
-                totalMembers = members.length;
-                adminCount = members
-                    .where((m) => (m as Map<String, dynamic>)['role'] == 'admin')
-                    .length;
-              }
+                  // Extract member data
+                  int totalMembers = 0;
+                  int adminCount = 0;
+                  if (memberSnapshot.hasData &&
+                      memberSnapshot.data!['success'] == true) {
+                    final List<dynamic> members =
+                        memberSnapshot.data!['members'] as List<dynamic>? ?? [];
+                    totalMembers = members.length;
+                    adminCount = members
+                        .where(
+                          (m) => (m as Map<String, dynamic>)['role'] == 'admin',
+                        )
+                        .length;
+                  }
 
                   // Extract polls and info data
                   int totalPolls = 0;
@@ -124,15 +125,16 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                     final List<dynamic> polls =
                         pollSnapshot.data!['polls'] as List<dynamic>? ?? [];
                     final List<dynamic> infoItems =
-                        pollSnapshot.data!['info_items'] as List<dynamic>? ?? [];
+                        pollSnapshot.data!['info_items'] as List<dynamic>? ??
+                        [];
                     totalPolls = polls.length;
                     infoItemsCount = infoItems.length;
                   }
 
-              // Extract analytics data
-              if (!analyticsSnapshot.hasData ||
-                  analyticsSnapshot.data!['success'] != true) {
-                // Show member stats even if analytics fail
+                  // Extract analytics data
+                  if (!analyticsSnapshot.hasData ||
+                      analyticsSnapshot.data!['success'] != true) {
+                    // Show member stats even if analytics fail
                     return _buildMembersOnlyView(
                       context,
                       totalMembers,
@@ -140,18 +142,18 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                       totalPolls,
                       infoItemsCount,
                     );
-              }
+                  }
 
-              final analyticsData = analyticsSnapshot.data!;
-              final List<dynamic> rawTrends =
-                  analyticsData['trends'] as List<dynamic>? ?? [];
-              final trends = rawTrends
-                  .map((item) => item as Map<String, dynamic>)
-                  .map(_TrendData.fromJson)
-                  .toList();
+                  final analyticsData = analyticsSnapshot.data!;
+                  final List<dynamic> rawTrends =
+                      analyticsData['trends'] as List<dynamic>? ?? [];
+                  final trends = rawTrends
+                      .map((item) => item as Map<String, dynamic>)
+                      .map(_TrendData.fromJson)
+                      .toList();
 
-              if (trends.isEmpty) {
-                // Show members and empty reviews state
+                  if (trends.isEmpty) {
+                    // Show members and empty reviews state
                     return _buildMembersAndEmptyReviewsView(
                       context,
                       totalMembers,
@@ -159,17 +161,17 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                       totalPolls,
                       infoItemsCount,
                     );
-              }
+                  }
 
-              // Show full dashboard with both reviews and members
-              return _buildFullDashboard(
-                context,
-                trends,
-                totalMembers,
-                adminCount,
+                  // Show full dashboard with both reviews and members
+                  return _buildFullDashboard(
+                    context,
+                    trends,
+                    totalMembers,
+                    adminCount,
                     totalPolls,
                     infoItemsCount,
-              );
+                  );
                 },
               );
             },
@@ -193,10 +195,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
         children: [
           const Text(
             'Society Overview',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           GridView.count(
@@ -245,18 +244,12 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                 const SizedBox(height: 16),
                 const Text(
                   'No review data yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Reviews will appear here once members start submitting them.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -281,10 +274,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
         children: [
           const Text(
             'Society Overview',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           GridView.count(
@@ -324,10 +314,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           const SizedBox(height: 32),
           const Text(
             'Review Analytics',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Center(
@@ -341,18 +328,12 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                 const SizedBox(height: 16),
                 const Text(
                   'No review data available yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Reviews will appear here once members start submitting them.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -379,10 +360,10 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
     final avgRating = trends.isEmpty
         ? 0.0
         : trends.fold<double>(
-              0,
-              (sum, trend) => sum + (trend.avgRating * trend.reviewCount),
-            ) /
-            totalReviews;
+                0,
+                (sum, trend) => sum + (trend.avgRating * trend.reviewCount),
+              ) /
+              totalReviews;
     final highestRating = trends
         .map((t) => t.avgRating)
         .reduce((a, b) => a > b ? a : b);
@@ -394,10 +375,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
         children: [
           const Text(
             'Society Overview',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           GridView.count(
@@ -437,10 +415,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           const SizedBox(height: 32),
           const Text(
             'Review Analytics',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           GridView.count(
@@ -475,10 +450,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           // Monthly Trends
           const Text(
             'Monthly Trends',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Card(
@@ -488,17 +460,9 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
               child: DataTable(
                 columnSpacing: 24,
                 columns: const [
-                  DataColumn(
-                    label: Text('Month'),
-                  ),
-                  DataColumn(
-                    label: Text('Avg Rating'),
-                    numeric: true,
-                  ),
-                  DataColumn(
-                    label: Text('Reviews'),
-                    numeric: true,
-                  ),
+                  DataColumn(label: Text('Month')),
+                  DataColumn(label: Text('Avg Rating'), numeric: true),
+                  DataColumn(label: Text('Reviews'), numeric: true),
                 ],
                 rows: trends
                     .map(
@@ -512,16 +476,8 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                               ),
                             ),
                           ),
-                          DataCell(
-                            Text(
-                              trend.avgRating.toStringAsFixed(2),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              '${trend.reviewCount}',
-                            ),
-                          ),
+                          DataCell(Text(trend.avgRating.toStringAsFixed(2))),
+                          DataCell(Text('${trend.reviewCount}')),
                         ],
                       ),
                     )
@@ -533,10 +489,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           // Visual trend bar chart
           const Text(
             'Review Count by Month',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           _TrendChart(trends: trends, monthLabel: _monthLabel),
@@ -569,20 +522,13 @@ class _StatCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              color.withAlpha(255),
-              color.withAlpha(200),
-            ],
+            colors: [color.withAlpha(255), color.withAlpha(200)],
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 28,
-            ),
+            Icon(icon, color: Colors.white, size: 28),
             const SizedBox(height: 8),
             Text(
               value,
@@ -595,10 +541,7 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
               textAlign: TextAlign.center,
             ),
           ],
@@ -612,21 +555,17 @@ class _TrendChart extends StatelessWidget {
   final List<_TrendData> trends;
   final String Function(String) monthLabel;
 
-  const _TrendChart({
-    required this.trends,
-    required this.monthLabel,
-  });
+  const _TrendChart({required this.trends, required this.monthLabel});
 
   @override
   Widget build(BuildContext context) {
     if (trends.isEmpty) {
-      return const Center(
-        child: Text('No data available'),
-      );
+      return const Center(child: Text('No data available'));
     }
 
-    final maxReviews =
-        trends.map((t) => t.reviewCount).reduce((a, b) => a > b ? a : b);
+    final maxReviews = trends
+        .map((t) => t.reviewCount)
+        .reduce((a, b) => a > b ? a : b);
     final chartHeight = 200.0;
 
     return SingleChildScrollView(
@@ -666,9 +605,7 @@ class _TrendChart extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         monthLabel(trend.month),
-                        style: const TextStyle(
-                          fontSize: 10,
-                        ),
+                        style: const TextStyle(fontSize: 10),
                       ),
                     ],
                   ),
