@@ -130,3 +130,64 @@ admin.site.register(SocietyInfo)
 admin.site.register(Review)
 admin.site.register(ReviewResponse)
 admin.site.register(ReviewReaction, ReviewReactionAdmin)
+
+
+class PollOptionInline(admin.TabularInline):
+    model = PollOption
+    extra = 0
+    readonly_fields = ("votes_count",)
+    fields = ("option_text", "votes_count")
+
+    def votes_count(self, obj):
+        from .models import PollVote
+
+        return PollVote.objects.filter(option=obj).count()
+
+    votes_count.short_description = "Votes"
+
+
+class PollAdmin(admin.ModelAdmin):
+    list_display = ("title", "society", "opens_at", "closes_at", "total_votes")
+    inlines = [PollOptionInline]
+
+    def total_votes(self, obj):
+        from .models import PollVote
+
+        return PollVote.objects.filter(poll=obj).count()
+
+    total_votes.short_description = "Total votes"
+
+
+class PollOptionAdmin(admin.ModelAdmin):
+    list_display = ("option_text", "poll", "votes_count")
+
+    def votes_count(self, obj):
+        from .models import PollVote
+
+        return PollVote.objects.filter(option=obj).count()
+
+    votes_count.short_description = "Votes"
+
+
+class PollVoteAdmin(admin.ModelAdmin):
+    list_display = ("id", "poll", "option", "user_email", "user_up_number", "created_at")
+    list_select_related = ("user", "poll", "option")
+    readonly_fields = ("user_email", "user_up_number")
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "Email"
+
+    def user_up_number(self, obj):
+        return obj.user.up_number
+
+    user_up_number.short_description = "UP number"
+
+
+admin.site.unregister(Poll)
+admin.site.unregister(PollOption)
+admin.site.unregister(PollVote)
+admin.site.register(Poll, PollAdmin)
+admin.site.register(PollOption, PollOptionAdmin)
+admin.site.register(PollVote, PollVoteAdmin)
