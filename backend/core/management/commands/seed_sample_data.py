@@ -77,8 +77,10 @@ class Command(BaseCommand):
         created_users = []
         for i in range(users_count):
             username = f'user{i+1}'
-            email = f'user{i+1}@example.com'
-            up = f'UP{1000 + i}'
+            # produce a six-digit UP number and corresponding email in the form up<6digits>@gmail.com
+            num = str(1000 + i).zfill(6)
+            email = f'up{num}@gmail.com'
+            up = f'UP{num}'
             user, created = User.objects.get_or_create(email=email, defaults={'username': username, 'up_number': up})
             # assign a realistic name and mark as filler by appending '*'
             name_idx = i % len(SAMPLE_NAMES)

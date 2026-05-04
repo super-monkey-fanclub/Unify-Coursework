@@ -58,15 +58,25 @@ class SocietyAdmin(admin.ModelAdmin):
         if not memberships:
             return "No members"
         return ", ".join(
-            f"{m.user.email} ({m.user.up_number})" for m in memberships
+            f"{m.user.email}" for m in memberships
         )
 
     members_summary.short_description = "Members"
 
 
 class MembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "society", "role", "created_at", "duration")
+    list_display = ("user_email", "user_up_number", "society", "role", "created_at", "duration")
     list_select_related = ("user", "society")
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "Email"
+
+    def user_up_number(self, obj):
+        return obj.user.up_number
+
+    user_up_number.short_description = "UP number"
 
     def duration(self, obj):
         return _duration_label(obj.created_at)
@@ -96,7 +106,21 @@ class ReviewReactionAdmin(admin.ModelAdmin):
     user_up_number.short_description = "UP number"
 
 
-admin.site.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ("email", "up_number", "first_name", "last_name", "admin_status", "is_active")
+    search_fields = ("email", "up_number", "first_name", "last_name")
+    list_filter = ("is_staff", "is_superuser", "is_active")
+    ordering = ("email",)
+
+    def admin_status(self, obj):
+        # Consider a user an 'Admin' if they are an admin of any society
+        return Membership.objects.filter(user=obj, role='admin').exists()
+
+    admin_status.short_description = "Admin status"
+    admin_status.boolean = True
+
+
+admin.site.register(User, UserAdmin)
 admin.site.register(Society, SocietyAdmin)
 admin.site.register(Membership, MembershipAdmin)
 admin.site.register(Poll)

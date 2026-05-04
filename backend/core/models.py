@@ -100,8 +100,8 @@ class Review(models.Model):
         unique_together = ('user', 'society')
 
     def __str__(self):
-        # Show reviewer email and UP number to make admin listings clearer.
-        return f"{self.user.email} ({self.user.up_number})"
+        # Show reviewer email (UP number removed to avoid brackets in listings).
+        return f"{self.user.email}"
 
 class ReviewResponse(models.Model):
     review = models.ForeignKey(Review, on_delete=models.CASCADE)
@@ -114,3 +114,34 @@ class ReviewReaction(models.Model):
     review = models.ForeignKey(Review, on_delete=models.CASCADE)
     reaction_type = models.CharField(max_length=20, choices=[('like', 'Like'), ('dislike', 'Dislike')])
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+# Signals to keep `User.account_type` in sync with society admin memberships.
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+
+def _update_user_account_type(user):
+    # Do not change staff/superuser/dev accounts
+    if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False) or getattr(user, 'account_type', '') == 'dev':
+        return
+
+    from django.db.models import Q
+    # If user has any admin membership, set society_admin, else regular
+    has_admin = Membership.objects.filter(user=user, role='admin').exists()
+    new_type = 'society_admin' if has_admin else 'regular'
+    if user.account_type != new_type:
+        user.account_type = new_type
+        user.save(update_fields=['account_type'])
+
+
+@receiver(post_save, sender=Membership)
+def membership_post_save(sender, instance, created, **kwargs):
+    # On create or update of a membership, ensure the user's account_type reflects admin status
+    _update_user_account_type(instance.user)
+
+
+@receiver(post_delete, sender=Membership)
+def membership_post_delete(sender, instance, **kwargs):
+    # On membership removal, re-evaluate the user's account_type
+    _update_user_account_type(instance.user)

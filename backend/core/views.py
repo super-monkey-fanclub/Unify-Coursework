@@ -281,8 +281,13 @@ def register_view(request: HttpRequest):
     data = _json_body(request)
 
     name = _safe_text(data.get('name'))
-    email = _safe_text(data.get('email')).lower()
+    # allow client to supply 'username' (often an email). If provided, use it as email too.
+    username_input = _safe_text(data.get('username'))
+    email_input = _safe_text(data.get('email'))
     password = data.get('password') or ''
+
+    # prefer username_input as the email if supplied, else fall back to email_input
+    email = (username_input or email_input or '').lower()
 
     if not name or not email or not password:
         return JsonResponse({'error': 'All fields are required.'}, status=400)
