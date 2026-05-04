@@ -51,7 +51,9 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     final result = await _authService.updateSettings(
       authToken: authToken,
       email: widget.currentUser?['email'] as String?,
-      currentPassword: _currentPassword.text.isEmpty ? null : _currentPassword.text,
+      currentPassword: _currentPassword.text.isEmpty
+          ? null
+          : _currentPassword.text,
       newEmail: _newEmail.text.isEmpty ? null : _newEmail.text.trim(),
       newPassword: _newPassword.text.isEmpty ? null : _newPassword.text,
       optInEmail: _optIn,
@@ -85,32 +87,45 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _newEmail,
-                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (val) {
-                  if (val == null || val.trim().isEmpty) return 'Email is required';
-                  if (!val.contains('@') || !val.contains('.')) return 'Enter a valid email address';
+                  if (val == null || val.trim().isEmpty)
+                    return 'Email is required';
+                  if (!val.contains('@') || !val.contains('.'))
+                    return 'Enter a valid email address';
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _currentPassword,
-                decoration: const InputDecoration(labelText: 'Current password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Current password',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
                 validator: (val) {
                   // Current password is required to change settings
-                  if (val == null || val.isEmpty) return 'Enter your current password';
+                  if (val == null || val.isEmpty)
+                    return 'Enter your current password';
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _newPassword,
-                decoration: const InputDecoration(labelText: 'New password (optional)', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'New password (optional)',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
                 validator: (val) {
-                  if (val != null && val.isNotEmpty && val.length < 8) return 'Password must be at least 8 characters';
+                  if (val != null && val.isNotEmpty && val.length < 8)
+                    return 'Password must be at least 8 characters';
                   return null;
                 },
               ),
@@ -132,9 +147,15 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
-                    : const Text('Save settings', style: TextStyle(color: Colors.white, fontSize: 16)),
+                    : const Text(
+                        'Save settings',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
               ),
             ],
           ),

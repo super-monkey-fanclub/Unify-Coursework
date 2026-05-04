@@ -92,7 +92,8 @@ class AuthService {
     try {
       final Map<String, dynamic> bodyPayload = {};
       if (email != null) bodyPayload['email'] = email;
-      if (currentPassword != null) bodyPayload['current_password'] = currentPassword;
+      if (currentPassword != null)
+        bodyPayload['current_password'] = currentPassword;
       if (newEmail != null) bodyPayload['new_email'] = newEmail;
       if (newPassword != null) bodyPayload['new_password'] = newPassword;
       if (optInEmail != null) bodyPayload['opt_in_email'] = optInEmail;
@@ -110,7 +111,8 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 10));
 
-      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+      final Map<String, dynamic> body =
+          jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200) {
         return {'success': true, 'user': body['user']};

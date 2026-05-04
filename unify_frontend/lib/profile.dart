@@ -71,19 +71,21 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 8),
             Text(
               email,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () async {
                 // Open account settings page and refresh user on return
-                final updated = await Navigator.of(context).push<Map<String, dynamic>?>(
-                  MaterialPageRoute(builder: (_) => AccountSettingsPage(currentUser: widget.currentUser)),
-                );
+                final updated = await Navigator.of(context)
+                    .push<Map<String, dynamic>?>(
+                      MaterialPageRoute(
+                        builder: (_) => AccountSettingsPage(
+                          currentUser: widget.currentUser,
+                        ),
+                      ),
+                    );
                 if (updated != null && updated.containsKey('user')) {
                   Navigator.of(context).pop(updated['user']);
                 }
@@ -302,13 +304,12 @@ class _AuthPageState extends State<AuthPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
-          isLoggedIn
-              ? 'Account'
-              : (_showSignUp ? 'Sign Up' : 'Login'),
+          isLoggedIn ? 'Account' : (_showSignUp ? 'Sign Up' : 'Login'),
         ),
       ),
-      body:
-          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
+      body: isLoggedIn
+          ? _buildLoggedInView()
+          : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }

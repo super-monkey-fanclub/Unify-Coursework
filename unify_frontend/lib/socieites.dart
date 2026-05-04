@@ -11,7 +11,13 @@ enum SocietySortOption {
   ratingHighLow,
 }
 
-enum SocietyRatingFilter { any, atLeastOne, atLeastTwo, atLeastThree, atLeastFour }
+enum SocietyRatingFilter {
+  any,
+  atLeastOne,
+  atLeastTwo,
+  atLeastThree,
+  atLeastFour,
+}
 
 class SocietySummary {
   final String name;
@@ -171,7 +177,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Drama Club',
         description: 'Acting workshops, productions, and backstage roles.',
         category: 'Performance',
-          imageUrl:
+        imageUrl:
             'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.theater_comedy,
         memberCount: 59,
@@ -199,7 +205,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
       ),
       SocietySummary(
         name: 'Environmental Club',
-        description: 'Campus green projects, cleanups and sustainability events.',
+        description:
+            'Campus green projects, cleanups and sustainability events.',
         category: 'Community',
         imageUrl:
             'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
@@ -211,7 +218,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Film Society',
         description: 'Screenings, discussions and filmmaking workshops.',
         category: 'Creative',
-          imageUrl:
+        imageUrl:
             'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.movie,
         memberCount: 72,
@@ -221,7 +228,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
         name: 'Chess Club',
         description: 'Casual and competitive chess sessions and tournaments.',
         category: 'Games',
-          imageUrl:
+        imageUrl:
             'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         icon: Icons.sports_esports,
         memberCount: 34,
@@ -239,7 +246,8 @@ class _SocietiesPageState extends State<SocietiesPage> {
       ),
       SocietySummary(
         name: 'Entrepreneurship Society',
-        description: 'Startups, pitch nights and networking for student founders.',
+        description:
+            'Startups, pitch nights and networking for student founders.',
         category: 'Professional',
         imageUrl:
             'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
@@ -335,7 +343,12 @@ class _SocietiesPageState extends State<SocietiesPage> {
           final List<dynamic> raw = res['reviews'] as List<dynamic>? ?? [];
           if (raw.isNotEmpty) {
             final ratings = raw
-                .map((m) => ((m as Map<String, dynamic>)['rating'] as num?)?.toDouble() ?? 0.0)
+                .map(
+                  (m) =>
+                      ((m as Map<String, dynamic>)['rating'] as num?)
+                          ?.toDouble() ??
+                      0.0,
+                )
                 .toList();
             final double avg = ratings.reduce((a, b) => a + b) / ratings.length;
             final double rounded = double.parse(avg.toStringAsFixed(1));
@@ -1612,8 +1625,9 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
 
     // Prefer backend reviews; fall back to seeded mock reviews when empty/unavailable
-    final List<dynamic> rawFromBackend =
-        (result['success'] == true) ? (result['reviews'] as List<dynamic>? ?? []) : [];
+    final List<dynamic> rawFromBackend = (result['success'] == true)
+        ? (result['reviews'] as List<dynamic>? ?? [])
+        : [];
 
     List<Map<String, dynamic>> rawMaps = rawFromBackend
         .map((e) => e as Map<String, dynamic>)
@@ -1637,24 +1651,27 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
 
     final List<SocietyReview> reviews = rawMaps
-        .map((m) => SocietyReview(
-              id: (m['id'] as int?) ?? 0,
-              author: (m['author'] as String?) ?? 'Anonymous',
-              authorDisplayName:
-                  (m['author_display_name'] as String?) ?? 'Anonymous',
-              rating: (m['rating'] as int?) ?? 5,
-              comment: (m['comment'] as String?) ?? '',
-              likes: (m['likes'] as int?) ?? 0,
-              dislikes: (m['dislikes'] as int?) ?? 0,
-              userReaction: m['user_reaction'] as String?,
-              canReact: m['can_react'] == true,
-              adminResponseText:
-                  (m['admin_response'] as Map<String, dynamic>?)?['text']
-                      as String?,
-              adminResponderName:
-                  (m['admin_response'] as Map<String, dynamic>?)
-                      ?['admin_display_name'] as String?,
-            ))
+        .map(
+          (m) => SocietyReview(
+            id: (m['id'] as int?) ?? 0,
+            author: (m['author'] as String?) ?? 'Anonymous',
+            authorDisplayName:
+                (m['author_display_name'] as String?) ?? 'Anonymous',
+            rating: (m['rating'] as int?) ?? 5,
+            comment: (m['comment'] as String?) ?? '',
+            likes: (m['likes'] as int?) ?? 0,
+            dislikes: (m['dislikes'] as int?) ?? 0,
+            userReaction: m['user_reaction'] as String?,
+            canReact: m['can_react'] == true,
+            adminResponseText:
+                (m['admin_response'] as Map<String, dynamic>?)?['text']
+                    as String?,
+            adminResponderName:
+                (m['admin_response']
+                        as Map<String, dynamic>?)?['admin_display_name']
+                    as String?,
+          ),
+        )
         .toList();
 
     final double average = reviews.isEmpty
@@ -2451,9 +2468,14 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() { _loading = true; });
+    setState(() {
+      _loading = true;
+    });
     await Future.wait([_loadPolls(), _loadNotifications()]);
-    if (mounted) setState(() { _loading = false; });
+    if (mounted)
+      setState(() {
+        _loading = false;
+      });
   }
 
   Future<void> _loadPolls() async {
@@ -2518,7 +2540,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     if (result['success'] == true) {
       final List<dynamic> raw = result['notifications'] as List<dynamic>? ?? [];
       setState(() {
-        _notifications = raw.map((e) => _NotificationItem.fromJson(e as Map<String, dynamic>)).toList();
+        _notifications = raw
+            .map((e) => _NotificationItem.fromJson(e as Map<String, dynamic>))
+            .toList();
       });
     }
   }
@@ -2886,7 +2910,12 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${widget.societyName} Analytics', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.primary)),
+        title: Text(
+          '${widget.societyName} Analytics',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
         content: SizedBox(
           width: 600,
           child: SingleChildScrollView(
@@ -2900,7 +2929,11 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                   title: 'Members',
                   stats: [
                     _StatItem('Current Members', '$totalMembers', Icons.people),
-                    _StatItem('Current Admins', '$adminCount', Icons.admin_panel_settings),
+                    _StatItem(
+                      'Current Admins',
+                      '$adminCount',
+                      Icons.admin_panel_settings,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -2909,7 +2942,11 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                   context,
                   title: 'Activity (All Time)',
                   stats: [
-                    _StatItem('Announcements', '$totalAnnouncements', Icons.announcement),
+                    _StatItem(
+                      'Announcements',
+                      '$totalAnnouncements',
+                      Icons.announcement,
+                    ),
                     _StatItem('Polls', '$totalPolls', Icons.poll),
                     _StatItem('Reviews', '$totalReviews', Icons.rate_review),
                     _StatItem('Reactions', '$totalReactions', Icons.favorite),
@@ -2929,11 +2966,20 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, {required String title, required List<_StatItem> stats}) {
+  Widget _buildStatCard(
+    BuildContext context, {
+    required String title,
+    required List<_StatItem> stats,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 12),
         Card(
           color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
@@ -2942,7 +2988,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
             child: Wrap(
               spacing: 32,
               runSpacing: 16,
-              children: stats.map((item) => _buildStatItem(context, item)).toList(),
+              children: stats
+                  .map((item) => _buildStatItem(context, item))
+                  .toList(),
             ),
           ),
         ),
@@ -2958,7 +3006,11 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(item.icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              item.icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 10),
             Text(
               item.label,
@@ -3234,24 +3286,60 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Notifications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        'Notifications',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 8),
-                      ..._notifications.map((n) => ListTile(
-                        title: Text(n.message, style: TextStyle(fontWeight: n.read ? FontWeight.normal : FontWeight.w700)),
-                        subtitle: Text(_timestampLabel(n.createdAt)),
-                        trailing: n.read ? null : TextButton(
-                          onPressed: () async {
-                            final res = await _societyService.markNotificationRead(notificationId: n.id, authToken: widget.userAuthToken);
-                            if (res['success'] == true) {
-                              await _loadNotifications();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Marked read')));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Could not mark read')));
-                            }
-                          },
-                          child: const Text('Mark read'),
+                      ..._notifications.map(
+                        (n) => ListTile(
+                          title: Text(
+                            n.message,
+                            style: TextStyle(
+                              fontWeight: n.read
+                                  ? FontWeight.normal
+                                  : FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Text(_timestampLabel(n.createdAt)),
+                          trailing: n.read
+                              ? null
+                              : TextButton(
+                                  onPressed: () async {
+                                    final res = await _societyService
+                                        .markNotificationRead(
+                                          notificationId: n.id,
+                                          authToken: widget.userAuthToken,
+                                        );
+                                    if (res['success'] == true) {
+                                      await _loadNotifications();
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            res['message'] ?? 'Marked read',
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            res['message'] ??
+                                                'Could not mark read',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: const Text('Mark read'),
+                                ),
                         ),
-                      ))
+                      ),
                     ],
                   ),
                 ),
@@ -3669,7 +3757,9 @@ class _NotificationItem {
       type: (json['type'] as String?) ?? 'info',
       message: (json['message'] as String?) ?? '',
       link: (json['link'] as String?) ?? '',
-      createdAt: DateTime.tryParse((json['created_at'] as String?) ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+          DateTime.now(),
       read: (json['read'] as bool?) ?? false,
     );
   }
