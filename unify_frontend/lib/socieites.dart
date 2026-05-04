@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'analytics_dashboard.dart';
 import 'services/society_service.dart';
 
 enum SocietySortOption {
@@ -2793,36 +2794,12 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     return '$dd/$mm/$yy\n$hh:$min';
   }
 
-  String _monthLabel(String monthKey) {
-    final parts = monthKey.split('-');
-    if (parts.length != 2) return monthKey;
 
-    final year = int.tryParse(parts[0]);
-    final month = int.tryParse(parts[1]);
-    if (year == null || month == null || month < 1 || month > 12) {
-      return monthKey;
-    }
-
-    const names = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${names[month - 1]} $year';
-  }
 
   Future<void> _showReviewAnalyticsDialog() async {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please log in as an admin to view analytics.'),
@@ -2831,68 +2808,15 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       return;
     }
 
-    final result = await _societyService.getReviewAnalytics(
-      societyName: widget.societyName,
-      viewerEmail: email,
-      authToken: widget.userAuthToken,
-    );
-
     if (!mounted) return;
 
-    if (result['success'] != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not load review analytics.',
-          ),
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AnalyticsDashboard(
+          societyName: widget.societyName,
+          userEmail: email,
+          userAuthToken: widget.userAuthToken,
         ),
-      );
-      return;
-    }
-
-    final List<dynamic> raw = result['trends'] as List<dynamic>? ?? [];
-    final trends = raw
-        .map((item) => item as Map<String, dynamic>)
-        .map(_MonthlyReviewTrend.fromJson)
-        .toList();
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Monthly Review Trends'),
-        content: SizedBox(
-          width: 420,
-          child: trends.isEmpty
-              ? const Text('No review data available yet for this society.')
-              : SingleChildScrollView(
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Month')),
-                      DataColumn(label: Text('Avg Rating')),
-                      DataColumn(label: Text('Reviews')),
-                    ],
-                    rows: trends
-                        .map(
-                          (trend) => DataRow(
-                            cells: [
-                              DataCell(Text(_monthLabel(trend.month))),
-                              DataCell(
-                                Text(trend.avgRating.toStringAsFixed(1)),
-                              ),
-                              DataCell(Text('${trend.reviewCount}')),
-                            ],
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
@@ -3393,25 +3317,7 @@ class _SocietyPoll {
   }
 }
 
-class _MonthlyReviewTrend {
-  final String month;
-  final double avgRating;
-  final int reviewCount;
 
-  const _MonthlyReviewTrend({
-    required this.month,
-    required this.avgRating,
-    required this.reviewCount,
-  });
-
-  factory _MonthlyReviewTrend.fromJson(Map<String, dynamic> json) {
-    return _MonthlyReviewTrend(
-      month: (json['month'] as String?) ?? '',
-      avgRating: ((json['avg_rating'] as num?) ?? 0).toDouble(),
-      reviewCount: (json['review_count'] as int?) ?? 0,
-    );
-  }
-}
 
 class PollCountdown extends StatefulWidget {
   final DateTime closesAt;
