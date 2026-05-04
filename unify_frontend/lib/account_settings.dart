@@ -25,7 +25,9 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: widget.currentUser['email'] as String? ?? '');
+    _emailController = TextEditingController(
+      text: widget.currentUser['email'] as String? ?? '',
+    );
     _currentPasswordController = TextEditingController();
     _newPasswordController = TextEditingController();
     _confirmNewPasswordController = TextEditingController();
@@ -48,8 +50,12 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    String? current = _currentPasswordController.text.isEmpty ? null : _currentPasswordController.text;
-    String? newPass = _newPasswordController.text.isEmpty ? null : _newPasswordController.text;
+    String? current = _currentPasswordController.text.isEmpty
+        ? null
+        : _currentPasswordController.text;
+    String? newPass = _newPasswordController.text.isEmpty
+        ? null
+        : _newPasswordController.text;
 
     setState(() => _isLoading = true);
     final res = await _authService.updateAccount(
@@ -88,50 +94,72 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
             children: [
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (val) {
-                  if (val == null || val.trim().isEmpty) return 'Email is required';
-                  if (!val.contains('@') || !val.contains('.')) return 'Enter a valid email address';
+                  if (val == null || val.trim().isEmpty)
+                    return 'Email is required';
+                  if (!val.contains('@') || !val.contains('.'))
+                    return 'Enter a valid email address';
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               CheckboxListTile(
-                title: const Text('Receive occasional emails about Unify updates'),
+                title: const Text(
+                  'Receive occasional emails about Unify updates',
+                ),
                 value: _optIn,
                 onChanged: (v) => setState(() => _optIn = v ?? false),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _currentPasswordController,
-                decoration: const InputDecoration(labelText: 'Current password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Current password',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _newPasswordController,
-                decoration: const InputDecoration(labelText: 'New password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'New password',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
                 validator: (val) {
-                  if (_currentPasswordController.text.isNotEmpty && (val == null || val.isEmpty)) return 'Enter a new password';
+                  if (_currentPasswordController.text.isNotEmpty &&
+                      (val == null || val.isEmpty))
+                    return 'Enter a new password';
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _confirmNewPasswordController,
-                decoration: const InputDecoration(labelText: 'Confirm new password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Confirm new password',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
                 validator: (val) {
-                  if (_newPasswordController.text.isNotEmpty && val != _newPasswordController.text) return 'Passwords do not match';
+                  if (_newPasswordController.text.isNotEmpty &&
+                      val != _newPasswordController.text)
+                    return 'Passwords do not match';
                   return null;
                 },
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
-                child: _isLoading ? const CircularProgressIndicator() : const Text('Save changes'),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Save changes'),
               ),
             ],
           ),

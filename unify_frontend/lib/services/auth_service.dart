@@ -109,11 +109,15 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 10));
 
-      final Map<String, dynamic> resBody = jsonDecode(response.body) as Map<String, dynamic>;
+      final Map<String, dynamic> resBody =
+          jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200) {
         return {'success': true, 'user': resBody['user']};
       }
-      return {'success': false, 'message': resBody['error'] ?? 'Update failed.'};
+      return {
+        'success': false,
+        'message': resBody['error'] ?? 'Update failed.',
+      };
     } catch (error) {
       return _connectionError(error);
     }

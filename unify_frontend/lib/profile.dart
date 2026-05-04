@@ -71,10 +71,7 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 8),
             Text(
               email,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -88,7 +85,9 @@ class _AuthPageState extends State<AuthPage> {
                       MaterialPageRoute(
                         builder: (_) =>
                             // Lazy import to avoid cycles
-                            AccountSettingsPage(currentUser: widget.currentUser!),
+                            AccountSettingsPage(
+                              currentUser: widget.currentUser!,
+                            ),
                       ),
                     );
                     if (res is Map<String, dynamic>) {
@@ -263,7 +262,9 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 24),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Receive occasional emails about Unify updates'),
+              title: const Text(
+                'Receive occasional emails about Unify updates',
+              ),
               value: _regOptIn,
               onChanged: (v) => setState(() => _regOptIn = v ?? false),
             ),
@@ -313,13 +314,12 @@ class _AuthPageState extends State<AuthPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
-          isLoggedIn
-              ? 'Account'
-              : (_showSignUp ? 'Sign Up' : 'Login'),
+          isLoggedIn ? 'Account' : (_showSignUp ? 'Sign Up' : 'Login'),
         ),
       ),
-      body:
-          isLoggedIn ? _buildLoggedInView() : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
+      body: isLoggedIn
+          ? _buildLoggedInView()
+          : (_showSignUp ? _buildSignUpPage() : _buildLoginPage()),
     );
   }
 }
