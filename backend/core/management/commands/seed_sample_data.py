@@ -84,9 +84,9 @@ class Command(BaseCommand):
             user, created = User.objects.get_or_create(email=email, defaults={'username': username, 'up_number': up})
             # assign a realistic name and mark as filler by appending '*'
             name_idx = i % len(SAMPLE_NAMES)
-            first, last = SAMPLE_NAMES[name_idx]
+            first, _ = SAMPLE_NAMES[name_idx]
             user.first_name = f"{first}*"
-            user.last_name = last
+            user.last_name = ''
             if created:
                 user.set_password('password')
             user.save()

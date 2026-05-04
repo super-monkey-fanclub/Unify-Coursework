@@ -108,8 +108,8 @@ class ReviewReactionAdmin(admin.ModelAdmin):
 
 
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("email", "up_number", "first_name", "last_name", "admin_status", "is_active")
-    search_fields = ("email", "up_number", "first_name", "last_name")
+    list_display = ("email", "up_number", "first_name", "admin_status", "is_active")
+    search_fields = ("email", "up_number", "first_name")
     list_filter = ("is_staff", "is_superuser", "is_active")
     ordering = ("email",)
 

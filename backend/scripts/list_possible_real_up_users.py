@@ -16,7 +16,7 @@ for u in User.objects.all():
         fname = (u.first_name or '')
         if uname.startswith('user') or fname.endswith('*'):
             continue
-        rows.append((u.pk, uname, fname, u.last_name or '', getattr(u, 'up_number', ''), email, u.is_staff, u.is_superuser))
+        rows.append((u.pk, uname, fname, getattr(u, 'up_number', ''), email, u.is_staff, u.is_superuser))
 
 print('Found', len(rows), 'potential real accounts with up... emails')
 for r in rows:
