@@ -68,9 +68,16 @@ class Poll(models.Model):
     ended_posted_as_info = models.BooleanField(default=False)
     notified_closing_soon = models.BooleanField(default=False)
 
+    def __str__(self):
+        return self.title
+
 class PollOption(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     option_text = models.CharField(max_length=255)
+
+    def __str__(self):
+        # show option with poll title for clear identification in admin
+        return f"{self.poll.title}: {self.option_text}"
 
 class PollVote(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
