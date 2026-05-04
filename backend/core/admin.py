@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from .models import (
     User,
     Society,
@@ -149,6 +150,34 @@ class PollOptionInline(admin.TabularInline):
 class PollAdmin(admin.ModelAdmin):
     list_display = ("title", "society", "opens_at", "closes_at", "total_votes")
     inlines = [PollOptionInline]
+    readonly_fields = ("options_and_votes",)
+    fieldsets = (
+        (None, {"fields": ("title", "society", "opens_at", "closes_at")} ),
+        ("Options & Votes", {"fields": ("options_and_votes",)}),
+    )
+
+    def options_and_votes(self, obj):
+        from .models import PollOption, PollVote
+
+        options = PollOption.objects.filter(poll=obj)
+        if not options:
+            return "<em>No options</em>"
+
+        parts = ["<div style='font-family: monospace;'>"]
+        for opt in options:
+            votes = PollVote.objects.filter(option=opt).select_related('user')
+            parts.append(f"<strong>Option:</strong> {opt.option_text} &ndash; <em>{votes.count()} votes</em><br/>")
+            if votes.exists():
+                parts.append("<ul>")
+                for v in votes:
+                    parts.append(f"<li>{v.user.email} ({v.user.up_number})</li>")
+                parts.append("</ul>")
+            else:
+                parts.append("<div style='color:#666;margin-bottom:8px;'>No votes yet</div>")
+        parts.append("</div>")
+        return mark_safe('\n'.join(parts))
+
+    options_and_votes.short_description = "Options and votes"
 
     def total_votes(self, obj):
         from .models import PollVote
