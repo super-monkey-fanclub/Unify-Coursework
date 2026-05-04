@@ -140,6 +140,7 @@ class PollCreationValidationTests(TestCase):
 			up_number='A000001',
 			account_type='dev',
 		)
+		Membership.objects.create(user=self.admin_user, society=self.society, role='admin')
 
 	def test_create_poll_rejects_duplicate_option_text(self):
 		response = self.client.post(
@@ -160,6 +161,25 @@ class PollCreationValidationTests(TestCase):
 			response.json()['error'],
 			'At least 2 unique poll options are required.',
 		)
+
+	def test_create_poll_sets_default_closing_flag(self):
+		response = self.client.post(
+			'/api/societies/polls/create/',
+			data={
+				'admin_email': self.admin_user.email,
+				'society_name': self.society.name,
+				'title': 'Pick a workshop topic',
+				'description': 'Choose one option.',
+				'options': ['AI', 'Web', 'Mobile'],
+				'duration_hours': 4,
+			},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 201)
+		poll = Poll.objects.get(title='Pick a workshop topic')
+		self.assertFalse(poll.notified_closing_soon)
+		self.assertEqual(PollOption.objects.filter(poll=poll).count(), 3)
 
 
 class ReviewReactionAndAnalyticsTests(TestCase):

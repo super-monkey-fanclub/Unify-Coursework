@@ -66,6 +66,7 @@ class Poll(models.Model):
     closes_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     ended_posted_as_info = models.BooleanField(default=False)
+    notified_closing_soon = models.BooleanField(default=False)
 
 class PollOption(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)

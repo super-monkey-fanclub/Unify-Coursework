@@ -1163,6 +1163,7 @@ def create_society_poll_view(request: HttpRequest):
         description=description,
         opens_at=opens_at,
         closes_at=closes_at,
+        notified_closing_soon=False,
     )
 
     PollOption.objects.bulk_create(
