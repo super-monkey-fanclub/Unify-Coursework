@@ -65,6 +65,47 @@ def _issue_auth_token(user: User) -> str:
     return signing.dumps({'uid': user.id}, salt=AUTH_TOKEN_SALT)
 
 
+def _notify_society_members(
+    *,
+    society: Society,
+    notif_type: str,
+    message: str,
+    link: str = '',
+    exclude_user_ids: set[int] | None = None,
+) -> None:
+    """Create a notification for every current member of a society.
+
+    Notifications are only created for users who have a Membership row for the
+    society (this ensures users only get notifications for societies they are in).
+    """
+    try:
+        excluded = exclude_user_ids or set()
+        member_ids = list(
+            Membership.objects.filter(society=society)
+            .exclude(user_id__in=excluded)
+            .values_list('user_id', flat=True)
+        )
+
+        if not member_ids:
+            return
+
+        Notification.objects.bulk_create(
+            [
+                Notification(
+                    user_id=uid,
+                    society=society,
+                    notif_type=notif_type,
+                    message=message,
+                    link=link,
+                )
+                for uid in member_ids
+            ]
+        )
+    except Exception:
+        # Fail silently: notifications should never break primary actions.
+        return
+
+
 def _auth_token_from_request(request: HttpRequest, data: dict | None = None) -> str | None:
     auth_header = request.headers.get('Authorization', '')
     if auth_header.lower().startswith('bearer '):
@@ -262,6 +303,12 @@ def _finalize_closed_polls(society: Society):
             ),
         )
 
+        _notify_society_members(
+            society=society,
+            notif_type='poll',
+            message=f'Poll ended in {society.name}: {poll.title}',
+        )
+
         poll.ended_posted_as_info = True
         poll.save(update_fields=['ended_posted_as_info'])
 
@@ -393,6 +440,14 @@ def join_society_view(request: HttpRequest):
         society=society,
         defaults={'role': 'member'},
     )
+
+    if created:
+        joiner_name = _author_display_name(user)
+        _notify_society_members(
+            society=society,
+            notif_type='info',
+            message=f'{joiner_name} joined {society.name}.',
+        )
 
     return JsonResponse(
         {
@@ -708,19 +763,12 @@ def add_review_view(request: HttpRequest):
         comment=comment,
     )
 
-    # Notify society admins that a new review has been added
-    admin_members = Membership.objects.select_related('user').filter(society=society, role='admin')
-    for admin_member in admin_members:
-        try:
-            Notification.objects.create(
-                user=admin_member.user,
-                society=society,
-                notif_type='review',
-                message=f"New review for {society.name} by {user.email}",
-            )
-        except Exception:
-            # Fail silently to avoid breaking review creation
-            pass
+    reviewer_name = _author_display_name(user)
+    _notify_society_members(
+        society=society,
+        notif_type='review',
+        message=f'New review in {society.name} by {reviewer_name} ({rating}★).',
+    )
 
     return JsonResponse(
         {
@@ -1006,6 +1054,21 @@ def admin_respond_review_view(request: HttpRequest):
             'response_text': response_text,
         },
     )
+
+    try:
+        if review.user_id != admin_user.id:
+            Notification.objects.create(
+                user=review.user,
+                society=review.society,
+                notif_type='review',
+                message=(
+                    f"{_author_display_name(admin_user)} responded to your review in {review.society.name}."
+                ),
+                link='',
+            )
+    except Exception:
+        # Fail silently: notifications should never break primary actions.
+        pass
 
     return JsonResponse(
         {
@@ -1308,6 +1371,13 @@ def create_society_info_view(request: HttpRequest):
         content=content,
     )
 
+    label = title or 'New announcement'
+    _notify_society_members(
+        society=society,
+        notif_type='info',
+        message=f'Announcement in {society.name}: {label}',
+    )
+
     return JsonResponse(
         {
             'message': 'Information posted.',
@@ -1390,6 +1460,12 @@ def create_society_poll_view(request: HttpRequest):
 
     PollOption.objects.bulk_create(
         [PollOption(poll=poll, option_text=option) for option in options]
+    )
+
+    _notify_society_members(
+        society=society,
+        notif_type='poll',
+        message=f'New poll in {society.name}: {poll.title}',
     )
 
     return JsonResponse(
