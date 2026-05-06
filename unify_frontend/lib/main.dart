@@ -195,6 +195,12 @@ class _HomePageState extends State<HomePage> {
   Map<String, dynamic>? _currentUser;
   final SocietyService _societyService = SocietyService();
 
+  Timer? _notificationPollTimer;
+  bool _notificationBaselineSet = false;
+  int? _lastSeenNotificationId;
+  int? _activeBannerNotificationId;
+  bool _pollingInFlight = false;
+
   @override
   void initState() {
     super.initState();
@@ -203,6 +209,148 @@ class _HomePageState extends State<HomePage> {
     _restoreSession();
     // Refresh live ratings from backend
     unawaited(_refreshSocietyRatings());
+  }
+
+  void _startNotificationPollingIfNeeded() {
+    if (_currentUser == null) {
+      _stopNotificationPolling();
+      return;
+    }
+
+    // Avoid creating multiple timers.
+    if (_notificationPollTimer != null) return;
+
+    // Establish baseline (don't pop a banner for existing notifications).
+    unawaited(_pollForNewNotifications(showIfNew: false));
+
+    _notificationPollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(_pollForNewNotifications());
+    });
+  }
+
+  void _stopNotificationPolling({bool hideBanner = true}) {
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = null;
+    _notificationBaselineSet = false;
+    _lastSeenNotificationId = null;
+    _activeBannerNotificationId = null;
+    if (hideBanner && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    }
+  }
+
+  Future<List<String>> _ensureJoinedSocietiesForPolling(String email) async {
+    final existing = _joinedSocietyNames();
+    if (existing.isNotEmpty) return existing;
+
+    final res = await _societyService.getMySocieties(email: email);
+    if (res['success'] == true) {
+      final List<String> names =
+          (res['societies'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+      if (!mounted) return names;
+      setState(() {
+        _currentUser = {...?_currentUser, 'joinedSocieties': names};
+      });
+      unawaited(_persistCurrentUser(_currentUser));
+      return names;
+    }
+
+    return <String>[];
+  }
+
+  Future<void> _pollForNewNotifications({bool showIfNew = true}) async {
+    if (!mounted) return;
+    if (_pollingInFlight) return;
+
+    final user = _currentUser;
+    if (user == null) return;
+
+    final email = (user['email'] as String?)?.toLowerCase().trim();
+    if (email == null || email.isEmpty) return;
+
+    _pollingInFlight = true;
+    try {
+      final societyNames = await _ensureJoinedSocietiesForPolling(email);
+      if (societyNames.isEmpty) return;
+
+      final token = user['auth_token'] as String?;
+      final futures = societyNames.toSet().map((societyName) async {
+        final res = await _societyService.getNotifications(
+          societyName: societyName,
+          viewerEmail: email,
+          authToken: token,
+        );
+        if (res['success'] != true) return null;
+        final raw = (res['notifications'] as List<dynamic>? ?? [])
+            .cast<Map<String, dynamic>>();
+        if (raw.isEmpty) return null;
+        return _GlobalNotificationItem.fromJson(raw.first, societyName);
+      }).toList();
+
+      final latestPerSociety = await Future.wait(futures);
+      final candidates = latestPerSociety.whereType<_GlobalNotificationItem>().toList();
+      if (candidates.isEmpty) return;
+
+      candidates.sort((a, b) {
+        final cmp = b.createdAt.compareTo(a.createdAt);
+        if (cmp != 0) return cmp;
+        return b.id.compareTo(a.id);
+      });
+      final latest = candidates.first;
+
+      if (!_notificationBaselineSet) {
+        _notificationBaselineSet = true;
+        _lastSeenNotificationId = latest.id;
+        return;
+      }
+
+      final lastId = _lastSeenNotificationId;
+      if (lastId != null && latest.id == lastId) return;
+
+      _lastSeenNotificationId = latest.id;
+      if (showIfNew) {
+        _showTopNotificationBanner(latest);
+      }
+    } catch (_) {
+      // Don't surface polling failures; the drawer already shows API errors.
+      return;
+    } finally {
+      _pollingInFlight = false;
+    }
+  }
+
+  void _showTopNotificationBanner(_GlobalNotificationItem item) {
+    if (!mounted) return;
+
+    _activeBannerNotificationId = item.id;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentMaterialBanner();
+
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        content: Text(
+          '${item.societyName}: ${item.message}',
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              messenger.hideCurrentMaterialBanner();
+              _activeBannerNotificationId = null;
+            },
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      if (_activeBannerNotificationId != item.id) return;
+      messenger.hideCurrentMaterialBanner();
+      _activeBannerNotificationId = null;
+    });
   }
 
   Future<void> _refreshSocietyRatings() async {
@@ -254,6 +402,8 @@ class _HomePageState extends State<HomePage> {
         _currentUser = parsed;
       });
 
+      _startNotificationPollingIfNeeded();
+
       final email = (parsed['email'] as String?)?.toLowerCase();
       if (email != null && email.isNotEmpty) {
         unawaited(_loadJoinedSocieties(email));
@@ -287,6 +437,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _stopNotificationPolling(hideBanner: false);
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -317,11 +468,13 @@ class _HomePageState extends State<HomePage> {
         _currentUser = null;
       });
       unawaited(_persistCurrentUser(null));
+      _stopNotificationPolling();
     } else if (value is Map<String, dynamic>) {
       setState(() {
         _currentUser = value;
       });
       unawaited(_persistCurrentUser(_currentUser));
+      _startNotificationPollingIfNeeded();
       // Load joined societies from the API if the user object has an email
       final email = (value['email'] as String?)?.toLowerCase();
       if (email != null && email.isNotEmpty) {
