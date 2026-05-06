@@ -838,8 +838,8 @@ def society_review_analytics_view(request: HttpRequest):
     if not _is_society_admin(viewer, society):
         return JsonResponse({'error': 'Only society admins can view review analytics.'}, status=403)
 
-    # Get trend data
-    trend_rows = (
+    # Get trend data (monthly reviews + cumulative members)
+    review_rows = (
         Review.objects.filter(society=society)
         .annotate(month=TruncMonth('created_at'))
         .values('month')
@@ -847,14 +847,45 @@ def society_review_analytics_view(request: HttpRequest):
         .order_by('month')
     )
 
-    trends = [
-        {
-            'month': row['month'].strftime('%Y-%m'),
+    review_by_month: dict[str, dict[str, object]] = {}
+    for row in review_rows:
+        month_key = row['month'].strftime('%Y-%m')
+        review_by_month[month_key] = {
             'avg_rating': round(float(row['avg_rating'] or 0.0), 1),
             'review_count': int(row['review_count'] or 0),
         }
-        for row in trend_rows
-    ]
+
+    member_rows = (
+        Membership.objects.filter(society=society)
+        .annotate(month=TruncMonth('created_at'))
+        .values('month')
+        .annotate(join_count=Count('id'))
+        .order_by('month')
+    )
+
+    member_joins_by_month: dict[str, int] = {}
+    for row in member_rows:
+        month_key = row['month'].strftime('%Y-%m')
+        member_joins_by_month[month_key] = int(row['join_count'] or 0)
+
+    all_months = sorted(set(review_by_month.keys()) | set(member_joins_by_month.keys()))
+    running_members = 0
+    trends = []
+    for month_key in all_months:
+        running_members += member_joins_by_month.get(month_key, 0)
+        review_stats = review_by_month.get(
+            month_key,
+            {'avg_rating': 0.0, 'review_count': 0},
+        )
+
+        trends.append(
+            {
+                'month': month_key,
+                'avg_rating': review_stats['avg_rating'],
+                'review_count': review_stats['review_count'],
+                'member_count': running_members,
+            }
+        )
 
     # Get society statistics
     total_members = Membership.objects.filter(society=society).count()

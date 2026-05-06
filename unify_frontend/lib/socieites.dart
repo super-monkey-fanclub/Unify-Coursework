@@ -2907,6 +2907,9 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final int totalReviews = stats['total_reviews'] as int? ?? 0;
     final int totalReactions = stats['total_reactions'] as int? ?? 0;
 
+    final List<Map<String, dynamic>> trends =
+      (result['trends'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -2952,6 +2955,52 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                     _StatItem('Reactions', '$totalReactions', Icons.favorite),
                   ],
                 ),
+
+                const SizedBox(height: 16),
+                Text(
+                  'Trends',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Members and reviews over time',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: trends.isEmpty
+                              ? null
+                              : () => _showMembersReviewsTrendDialog(
+                                    context: context,
+                                    rawTrends: trends,
+                                  ),
+                          icon: const Icon(Icons.show_chart),
+                          label: const Text('View line graph'),
+                        ),
+                        if (trends.isEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'No trend data available yet.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -2959,6 +3008,97 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_TrendPoint> _parseTrendPoints(List<Map<String, dynamic>> rawTrends) {
+    final points = <_TrendPoint>[];
+
+    for (final row in rawTrends) {
+      final monthKey = row['month']?.toString() ?? '';
+      final parts = monthKey.split('-');
+      if (parts.length != 2) continue;
+
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      if (year == null || month == null || month < 1 || month > 12) continue;
+
+      final members = (row['member_count'] as int?) ?? 0;
+      final reviews = (row['review_count'] as int?) ?? 0;
+
+      points.add(
+        _TrendPoint(
+          month: DateTime(year, month),
+          memberCount: members,
+          reviewCount: reviews,
+        ),
+      );
+    }
+
+    points.sort((a, b) => a.month.compareTo(b.month));
+    return points;
+  }
+
+  Future<void> _showMembersReviewsTrendDialog({
+    required BuildContext context,
+    required List<Map<String, dynamic>> rawTrends,
+  }) async {
+    final points = _parseTrendPoints(rawTrends);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Members & Reviews over time',
+          style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
+                color: Theme.of(dialogContext).colorScheme.primary,
+              ),
+        ),
+        content: SizedBox(
+          width: 720,
+          child: points.isEmpty
+              ? const Text('No trend data available yet.')
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _MembersReviewsLegend(
+                      membersColor:
+                          Theme.of(dialogContext).colorScheme.primary,
+                      reviewsColor:
+                          Theme.of(dialogContext).colorScheme.secondary,
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 280,
+                      width: double.infinity,
+                      child: _MembersReviewsLineChart(
+                        points: points,
+                        axisColor:
+                            Theme.of(dialogContext).colorScheme.outline,
+                        membersColor:
+                            Theme.of(dialogContext).colorScheme.primary,
+                        reviewsColor:
+                            Theme.of(dialogContext).colorScheme.secondary,
+                        labelStyle: Theme.of(dialogContext)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color:
+                                  Theme.of(dialogContext).colorScheme.onSurface,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Close'),
           ),
         ],
@@ -3623,6 +3763,252 @@ class _MonthlyReviewTrend {
       avgRating: ((json['avg_rating'] as num?) ?? 0).toDouble(),
       reviewCount: (json['review_count'] as int?) ?? 0,
     );
+  }
+}
+
+class _TrendPoint {
+  final DateTime month;
+  final int memberCount;
+  final int reviewCount;
+
+  const _TrendPoint({
+    required this.month,
+    required this.memberCount,
+    required this.reviewCount,
+  });
+}
+
+class _MembersReviewsLegend extends StatelessWidget {
+  final Color membersColor;
+  final Color reviewsColor;
+
+  const _MembersReviewsLegend({
+    required this.membersColor,
+    required this.reviewsColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall;
+    return Row(
+      children: [
+        _LegendItem(color: membersColor, label: 'Members', style: style),
+        const SizedBox(width: 16),
+        _LegendItem(color: reviewsColor, label: 'Reviews', style: style),
+      ],
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
+  final TextStyle? style;
+
+  const _LegendItem({
+    required this.color,
+    required this.label,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 3,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(label, style: style),
+      ],
+    );
+  }
+}
+
+class _MembersReviewsLineChart extends StatelessWidget {
+  final List<_TrendPoint> points;
+  final Color axisColor;
+  final Color membersColor;
+  final Color reviewsColor;
+  final TextStyle? labelStyle;
+
+  const _MembersReviewsLineChart({
+    required this.points,
+    required this.axisColor,
+    required this.membersColor,
+    required this.reviewsColor,
+    required this.labelStyle,
+  });
+
+  String _labelForMonth(DateTime date) {
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final idx = date.month - 1;
+    if (idx < 0 || idx >= names.length) return '${date.month}/${date.year}';
+    return '${names[idx]} ${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = points.map((p) => _labelForMonth(p.month)).toList();
+    return CustomPaint(
+      painter: _MembersReviewsLineChartPainter(
+        points: points,
+        labels: labels,
+        axisColor: axisColor,
+        membersColor: membersColor,
+        reviewsColor: reviewsColor,
+        labelStyle: labelStyle ?? Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+class _MembersReviewsLineChartPainter extends CustomPainter {
+  final List<_TrendPoint> points;
+  final List<String> labels;
+  final Color axisColor;
+  final Color membersColor;
+  final Color reviewsColor;
+  final TextStyle? labelStyle;
+
+  const _MembersReviewsLineChartPainter({
+    required this.points,
+    required this.labels,
+    required this.axisColor,
+    required this.membersColor,
+    required this.reviewsColor,
+    required this.labelStyle,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty || size.width <= 0 || size.height <= 0) return;
+
+    const leftPadding = 46.0;
+    const rightPadding = 16.0;
+    const topPadding = 16.0;
+    const bottomPadding = 36.0;
+
+    final plotWidth = size.width - leftPadding - rightPadding;
+    final plotHeight = size.height - topPadding - bottomPadding;
+    if (plotWidth <= 0 || plotHeight <= 0) return;
+
+    final plotRect = Rect.fromLTWH(leftPadding, topPadding, plotWidth, plotHeight);
+
+    final axisPaint = Paint()
+      ..color = axisColor
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    // Axes
+    canvas.drawLine(plotRect.bottomLeft, plotRect.bottomRight, axisPaint);
+    canvas.drawLine(plotRect.bottomLeft, plotRect.topLeft, axisPaint);
+
+    // Determine y max
+    var yMax = 0;
+    for (final p in points) {
+      if (p.memberCount > yMax) yMax = p.memberCount;
+      if (p.reviewCount > yMax) yMax = p.reviewCount;
+    }
+    if (yMax <= 0) yMax = 1;
+
+    final dx = points.length == 1 ? 0.0 : plotRect.width / (points.length - 1);
+
+    Offset pointOffset(int i, int value) {
+      final x = plotRect.left + dx * i;
+      final y = plotRect.bottom - (value / yMax) * plotRect.height;
+      return Offset(x, y);
+    }
+
+    void drawSeries({required Color color, required int Function(_TrendPoint) valueOf}) {
+      final linePaint = Paint()
+        ..color = color
+        ..strokeWidth = 2.6
+        ..style = PaintingStyle.stroke;
+
+      final dotPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill;
+
+      final path = Path();
+      for (var i = 0; i < points.length; i++) {
+        final v = valueOf(points[i]);
+        final o = pointOffset(i, v);
+        if (i == 0) {
+          path.moveTo(o.dx, o.dy);
+        } else {
+          path.lineTo(o.dx, o.dy);
+        }
+      }
+      canvas.drawPath(path, linePaint);
+
+      for (var i = 0; i < points.length; i++) {
+        final v = valueOf(points[i]);
+        final o = pointOffset(i, v);
+        canvas.drawCircle(o, 3.2, dotPaint);
+      }
+    }
+
+    // Series: members + reviews
+    drawSeries(color: membersColor, valueOf: (p) => p.memberCount);
+    drawSeries(color: reviewsColor, valueOf: (p) => p.reviewCount);
+
+    // Y labels (0 and max)
+    final yLabelStyle = labelStyle;
+    void paintText(String text, Offset offset) {
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: yLabelStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      tp.paint(canvas, offset);
+    }
+
+    paintText('0', Offset(plotRect.left - 18, plotRect.bottom - 8));
+    paintText('$yMax', Offset(plotRect.left - 34, plotRect.top - 8));
+
+    // X labels
+    final labelStep = points.length <= 6 ? 1 : ((points.length / 6).ceil());
+    for (var i = 0; i < labels.length; i += labelStep) {
+      final label = labels[i];
+      final x = plotRect.left + dx * i;
+      final tp = TextPainter(
+        text: TextSpan(text: label, style: labelStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      final offset = Offset(x - tp.width / 2, plotRect.bottom + 6);
+      tp.paint(canvas, offset);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MembersReviewsLineChartPainter oldDelegate) {
+    return oldDelegate.points != points ||
+        oldDelegate.axisColor != axisColor ||
+        oldDelegate.membersColor != membersColor ||
+        oldDelegate.reviewsColor != reviewsColor ||
+        oldDelegate.labelStyle != labelStyle ||
+        oldDelegate.labels != labels;
   }
 }
 

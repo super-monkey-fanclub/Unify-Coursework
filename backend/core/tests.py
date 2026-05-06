@@ -279,6 +279,7 @@ class ReviewReactionAndAnalyticsTests(TestCase):
 		self.assertEqual(len(payload['trends']), 2)
 		self.assertIn('avg_rating', payload['trends'][0])
 		self.assertIn('review_count', payload['trends'][0])
+		self.assertIn('member_count', payload['trends'][0])
 
 	def test_non_admin_cannot_fetch_review_analytics(self):
 		response = self.client.get(
