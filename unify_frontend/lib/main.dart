@@ -199,6 +199,7 @@ class _HomePageState extends State<HomePage> {
   int? _lastSeenNotificationId;
   int? _activeBannerNotificationId;
   bool _pollingInFlight = false;
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
@@ -232,6 +233,7 @@ class _HomePageState extends State<HomePage> {
     _notificationPollTimer = null;
     _lastSeenNotificationId = null;
     _activeBannerNotificationId = null;
+    _unreadNotificationCount = 0;
     if (hideBanner && mounted) {
       ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
     }
@@ -269,7 +271,14 @@ class _HomePageState extends State<HomePage> {
     _pollingInFlight = true;
     try {
       final societyNames = await _ensureJoinedSocietiesForPolling(email);
-      if (societyNames.isEmpty) return;
+      if (societyNames.isEmpty) {
+        if (mounted && _unreadNotificationCount != 0) {
+          setState(() {
+            _unreadNotificationCount = 0;
+          });
+        }
+        return;
+      }
 
       final token = user['auth_token'] as String?;
       final futures = societyNames.toSet().map((societyName) async {
@@ -283,17 +292,37 @@ class _HomePageState extends State<HomePage> {
             .cast<Map<String, dynamic>>();
         if (raw.isEmpty) return null;
 
+        final unreadCount = raw.where((m) => m['read'] != true).length;
+
         // Alert on the most recent unread notification.
         final unread = raw.firstWhere(
           (m) => m['read'] != true,
           orElse: () => <String, dynamic>{},
         );
-        if (unread.isEmpty) return null;
-        return _GlobalNotificationItem.fromJson(unread, societyName);
+        final latestUnread = unread.isEmpty
+            ? null
+            : _GlobalNotificationItem.fromJson(unread, societyName);
+
+        return _NotificationPollResult(
+          unreadCount: unreadCount,
+          latestUnread: latestUnread,
+        );
       }).toList();
 
-      final latestPerSociety = await Future.wait(futures);
-      final candidates = latestPerSociety.whereType<_GlobalNotificationItem>().toList();
+      final results = await Future.wait(futures);
+      final typed = results.whereType<_NotificationPollResult>().toList();
+
+      final totalUnread = typed.fold<int>(0, (sum, r) => sum + r.unreadCount);
+      if (mounted && totalUnread != _unreadNotificationCount) {
+        setState(() {
+          _unreadNotificationCount = totalUnread;
+        });
+      }
+
+      final candidates = typed
+          .map((r) => r.latestUnread)
+          .whereType<_GlobalNotificationItem>()
+          .toList();
       if (candidates.isEmpty) return;
 
       candidates.sort((a, b) {
@@ -348,6 +377,11 @@ class _HomePageState extends State<HomePage> {
       messenger.hideCurrentMaterialBanner();
       _activeBannerNotificationId = null;
     });
+  }
+
+  String _badgeLabel(int count) {
+    if (count > 99) return '99+';
+    return '$count';
   }
 
   Future<void> _refreshSocietyRatings() async {
@@ -528,6 +562,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    unawaited(_pollForNewNotifications());
+
     setState(() {
       _notificationsDrawerEpoch++;
     });
@@ -679,6 +715,9 @@ class _HomePageState extends State<HomePage> {
                 key: ValueKey(_notificationsDrawerEpoch),
                 currentUser: _currentUser,
                 joinedSocietyNames: joined,
+                onNotificationReadChanged: () {
+                  unawaited(_pollForNewNotifications());
+                },
               ),
             )
           : null,
@@ -726,9 +765,39 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Notifications',
             onPressed: _openNotificationsHub,
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Colors.white,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white,
+                ),
+                if (_unreadNotificationCount > 0)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      child: Text(
+                        _badgeLabel(_unreadNotificationCount),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           IconButton(
@@ -1069,11 +1138,13 @@ class _HomePageState extends State<HomePage> {
 class AllNotificationsPanel extends StatefulWidget {
   final Map<String, dynamic>? currentUser;
   final List<String> joinedSocietyNames;
+  final VoidCallback? onNotificationReadChanged;
 
   const AllNotificationsPanel({
     super.key,
     required this.currentUser,
     required this.joinedSocietyNames,
+    this.onNotificationReadChanged,
   });
 
   @override
@@ -1220,6 +1291,8 @@ class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
             )
             .toList();
       });
+
+      widget.onNotificationReadChanged?.call();
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1355,6 +1428,16 @@ class _GlobalNotificationItem {
       societyName: societyName,
     );
   }
+}
+
+class _NotificationPollResult {
+  final int unreadCount;
+  final _GlobalNotificationItem? latestUnread;
+
+  const _NotificationPollResult({
+    required this.unreadCount,
+    required this.latestUnread,
+  });
 }
 
 class _HeroStatChip extends StatelessWidget {
