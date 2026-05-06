@@ -196,7 +196,6 @@ class _HomePageState extends State<HomePage> {
   final SocietyService _societyService = SocietyService();
 
   Timer? _notificationPollTimer;
-  bool _notificationBaselineSet = false;
   int? _lastSeenNotificationId;
   int? _activeBannerNotificationId;
   bool _pollingInFlight = false;
@@ -220,8 +219,8 @@ class _HomePageState extends State<HomePage> {
     // Avoid creating multiple timers.
     if (_notificationPollTimer != null) return;
 
-    // Establish baseline (don't pop a banner for existing notifications).
-    unawaited(_pollForNewNotifications(showIfNew: false));
+    // Poll immediately so unread notifications surface quickly.
+    unawaited(_pollForNewNotifications());
 
     _notificationPollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       unawaited(_pollForNewNotifications());
@@ -231,7 +230,6 @@ class _HomePageState extends State<HomePage> {
   void _stopNotificationPolling({bool hideBanner = true}) {
     _notificationPollTimer?.cancel();
     _notificationPollTimer = null;
-    _notificationBaselineSet = false;
     _lastSeenNotificationId = null;
     _activeBannerNotificationId = null;
     if (hideBanner && mounted) {
@@ -258,7 +256,7 @@ class _HomePageState extends State<HomePage> {
     return <String>[];
   }
 
-  Future<void> _pollForNewNotifications({bool showIfNew = true}) async {
+  Future<void> _pollForNewNotifications() async {
     if (!mounted) return;
     if (_pollingInFlight) return;
 
@@ -284,7 +282,14 @@ class _HomePageState extends State<HomePage> {
         final raw = (res['notifications'] as List<dynamic>? ?? [])
             .cast<Map<String, dynamic>>();
         if (raw.isEmpty) return null;
-        return _GlobalNotificationItem.fromJson(raw.first, societyName);
+
+        // Alert on the most recent unread notification.
+        final unread = raw.firstWhere(
+          (m) => m['read'] != true,
+          orElse: () => <String, dynamic>{},
+        );
+        if (unread.isEmpty) return null;
+        return _GlobalNotificationItem.fromJson(unread, societyName);
       }).toList();
 
       final latestPerSociety = await Future.wait(futures);
@@ -298,19 +303,11 @@ class _HomePageState extends State<HomePage> {
       });
       final latest = candidates.first;
 
-      if (!_notificationBaselineSet) {
-        _notificationBaselineSet = true;
-        _lastSeenNotificationId = latest.id;
-        return;
-      }
-
       final lastId = _lastSeenNotificationId;
       if (lastId != null && latest.id == lastId) return;
 
       _lastSeenNotificationId = latest.id;
-      if (showIfNew) {
-        _showTopNotificationBanner(latest);
-      }
+      _showTopNotificationBanner(latest);
     } catch (_) {
       // Don't surface polling failures; the drawer already shows API errors.
       return;
