@@ -318,6 +318,7 @@ def register_view(request: HttpRequest):
             'auth_token': auth_token,
             'user': {
                 'id': user.id,
+                'name': _author_display_name(user),
                 'username': user.username,
                 'email': user.email,
                 'account_type': user.account_type,
@@ -356,6 +357,7 @@ def login_view(request: HttpRequest):
             'auth_token': auth_token,
             'user': {
                 'id': user.id,
+                'name': _author_display_name(user),
                 'username': user.username,
                 'email': user.email,
                 'account_type': user.account_type,
@@ -1147,7 +1149,23 @@ def account_settings_view(request: HttpRequest):
     if updated:
         user.save()
 
-    return JsonResponse({'message': 'Settings updated.', 'user': {'id': user.id, 'email': user.email, 'opt_in_email': user.opt_in_email}}, status=200)
+    auth_token = _issue_auth_token(user)
+    return JsonResponse(
+        {
+            'message': 'Settings updated.',
+            'auth_token': auth_token,
+            'user': {
+                'id': user.id,
+                'name': _author_display_name(user),
+                'username': user.username,
+                'email': user.email,
+                'account_type': user.account_type,
+                'opt_in_email': user.opt_in_email,
+                'auth_token': auth_token,
+            },
+        },
+        status=200,
+    )
 
 
 @csrf_exempt

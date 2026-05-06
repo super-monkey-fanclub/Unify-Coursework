@@ -470,6 +470,26 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String _currentUserDisplayName() {
+    final user = _currentUser;
+    if (user == null) return '';
+
+    final raw =
+        (user['name'] ?? user['display_name'] ?? user['username'] ?? user['email'])
+            ?.toString()
+            .trim();
+    if (raw == null || raw.isEmpty) return '';
+    if (raw.contains('@')) return raw.split('@').first;
+    return raw;
+  }
+
+  String _welcomeText() {
+    if (_currentUser == null) return 'Welcome';
+    final name = _currentUserDisplayName();
+    if (name.isEmpty) return 'Welcome back';
+    return 'Welcome back, $name';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -563,7 +583,7 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome${_currentUser == null ? '' : ', ${_currentUser!['name'] ?? 'back'}'}',
+                _welcomeText(),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
