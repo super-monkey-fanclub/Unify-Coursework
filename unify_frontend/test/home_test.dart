@@ -10,7 +10,7 @@ void main() {
     expect(find.text('Unify'), findsOneWidget);
     expect(find.text('About Us'), findsOneWidget);
     expect(find.text('Find societies'), findsOneWidget);
-    expect(find.text('Join a society today'), findsOneWidget);
-    expect(find.textContaining('Society'), findsWidgets);
+    expect(find.text('Featured this week'), findsOneWidget);
+    expect(find.text('Explore popular student groups on campus'), findsOneWidget);
   });
 }

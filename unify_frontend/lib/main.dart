@@ -646,35 +646,51 @@ class _HomePageState extends State<HomePage> {
           : null,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
-        title: Row(
-          children: const [
-            Text(
-              'Unify',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _HeaderStatChip(icon: Icons.explore, label: '9+ societies'),
-                    SizedBox(width: 6),
-                    _HeaderStatChip(
-                      icon: Icons.people_alt,
-                      label: 'Student led',
-                    ),
-                    SizedBox(width: 6),
-                    _HeaderStatChip(icon: Icons.star, label: 'Top rated'),
-                  ],
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 260) {
+              return const Text(
+                'Unify',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
-              ),
-            ),
-          ],
+              );
+            }
+
+            return Row(
+              mainAxisSize: MainAxisSize.max,
+              children: const [
+                Text(
+                  'Unify',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Flexible(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _HeaderStatChip(icon: Icons.explore, label: '9+ societies'),
+                        SizedBox(width: 6),
+                        _HeaderStatChip(
+                          icon: Icons.people_alt,
+                          label: 'Student led',
+                        ),
+                        SizedBox(width: 6),
+                        _HeaderStatChip(icon: Icons.star, label: 'Top rated'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         actions: [
           IconButton(

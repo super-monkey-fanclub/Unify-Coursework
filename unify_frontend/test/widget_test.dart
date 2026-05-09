@@ -21,10 +21,10 @@ void main() {
     // Verify that the About Us button is present.
     expect(find.text('About Us'), findsOneWidget);
 
-    // Verify that the Join button is present.
-    expect(find.text('Join a society today'), findsOneWidget);
+    // Verify that the main call-to-action is present.
+    expect(find.text('Find societies'), findsWidgets);
 
-    // Verify at least one society name is displayed.
-    expect(find.textContaining('Society'), findsWidgets);
+    // Verify the featured section is displayed.
+    expect(find.text('Featured this week'), findsOneWidget);
   });
 }

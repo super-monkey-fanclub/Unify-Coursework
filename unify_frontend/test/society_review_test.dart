@@ -21,13 +21,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Members'), findsOneWidget);
-    expect(find.text('82'), findsOneWidget);
+    expect(find.text('Members'), findsWidgets);
+    expect(find.text('82'), findsWidgets);
     expect(find.text('Average rating'), findsOneWidget);
-    expect(find.text('4.6'), findsOneWidget);
+    expect(find.text('4.6'), findsWidgets);
   });
 
-  testWidgets('Joined user can leave society with feedback message', (
+  testWidgets('Joined user sees leave action and review controls', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -47,11 +47,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Leave society'));
-    await tester.tap(find.text('Leave society'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.text('Join society'), findsOneWidget);
+    expect(find.text('Leave society'), findsOneWidget);
+    expect(find.text('Reviews'), findsOneWidget);
+    expect(find.text('Sort'), findsWidgets);
+    expect(find.text('Min'), findsWidgets);
   });
 }

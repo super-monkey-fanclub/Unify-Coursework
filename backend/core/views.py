@@ -1452,8 +1452,11 @@ def create_society_poll_view(request: HttpRequest):
     except (TypeError, ValueError):
         return JsonResponse({'error': 'duration_hours must be an integer.'}, status=400)
 
-    if duration_hours < 1:
-        return JsonResponse({'error': 'duration_hours must be at least 1.'}, status=400)
+    if duration_hours < 24:
+        return JsonResponse({'error': 'duration_hours must be at least 24 hours.'}, status=400)
+
+    if duration_hours > 168:
+        return JsonResponse({'error': 'duration_hours must be 168 hours or less.'}, status=400)
 
     if not isinstance(options_raw, list):
         return JsonResponse({'error': 'options must be a list.'}, status=400)
@@ -1470,6 +1473,15 @@ def create_society_poll_view(request: HttpRequest):
     if len(options) < 2:
         return JsonResponse({'error': 'At least 2 unique poll options are required.'}, status=400)
 
+    if len(options) > 10:
+        return JsonResponse({'error': 'A poll can have at most 10 options.'}, status=400)
+
+    if len(description) > REVIEW_MAX_COMMENT_LENGTH:
+        return JsonResponse(
+            {'error': f'Poll description must be {REVIEW_MAX_COMMENT_LENGTH} characters or less.'},
+            status=400,
+        )
+
     if admin_user is None:
         try:
             admin_user = User.objects.get(email=admin_email)
@@ -1483,6 +1495,9 @@ def create_society_poll_view(request: HttpRequest):
 
     if not _is_society_admin(admin_user, society):
         return JsonResponse({'error': 'Only society admins can create polls.'}, status=403)
+
+    if Poll.objects.filter(society=society, title=title, description=description).exists():
+        return JsonResponse({'error': 'Duplicate poll.'}, status=409)
 
     opens_at = timezone.now()
     closes_at = opens_at + timedelta(hours=duration_hours)
@@ -1630,6 +1645,9 @@ def delete_society_poll_view(request: HttpRequest):
 
     if not _is_society_admin(admin_user, poll.society):
         return JsonResponse({'error': 'Only society admins can delete polls.'}, status=403)
+
+    if timezone.now() - poll.created_at < timedelta(minutes=30):
+        return JsonResponse({'error': 'Polls can only be deleted after 30 minutes.'}, status=403)
 
     poll.delete()
     return JsonResponse({'message': 'Poll deleted.'}, status=200)
