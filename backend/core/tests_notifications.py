@@ -375,13 +375,31 @@ class AccountSettingsTests(TestCase):
                 'email': self.user.email,
                 'current_password': 'password123',
                 'new_email': 'user@test.com',
-                'new_password': 'newpassword456',
+                'new_password': 'newpassword456!',
             },
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('newpassword456'))
+        self.assertTrue(self.user.check_password('newpassword456!'))
+
+    def test_can_update_password_requires_symbol(self):
+        """User cannot update password without a symbol"""
+        response = self.client.post(
+            '/api/auth/settings/',
+            data={
+                'email': self.user.email,
+                'current_password': 'password123',
+                'new_email': 'user@test.com',
+                'new_password': 'newpassword456',
+            },
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()['error'],
+            'Password must include at least one symbol.',
+        )
 
     def test_registration_with_opt_in(self):
         """Users can opt-in to mailing list during registration"""
@@ -390,7 +408,7 @@ class AccountSettingsTests(TestCase):
             data={
                 'name': 'Jane Doe',
                 'email': 'jane@test.com',
-                'password': 'password123',
+                'password': 'password123!',
                 'opt_in_email': True,
             },
             content_type='application/json',
