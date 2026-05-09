@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile.dart';
 import 'socieites.dart';
@@ -44,6 +45,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   static const String _sessionUserStorageKey = 'unify.current_user';
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _notificationsDrawerEpoch = 0;
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -191,6 +195,12 @@ class _HomePageState extends State<HomePage> {
   Map<String, dynamic>? _currentUser;
   final SocietyService _societyService = SocietyService();
 
+  Timer? _notificationPollTimer;
+  int? _lastSeenNotificationId;
+  int? _activeBannerNotificationId;
+  bool _pollingInFlight = false;
+  int _unreadNotificationCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -199,6 +209,179 @@ class _HomePageState extends State<HomePage> {
     _restoreSession();
     // Refresh live ratings from backend
     unawaited(_refreshSocietyRatings());
+  }
+
+  void _startNotificationPollingIfNeeded() {
+    if (_currentUser == null) {
+      _stopNotificationPolling();
+      return;
+    }
+
+    // Avoid creating multiple timers.
+    if (_notificationPollTimer != null) return;
+
+    // Poll immediately so unread notifications surface quickly.
+    unawaited(_pollForNewNotifications());
+
+    _notificationPollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(_pollForNewNotifications());
+    });
+  }
+
+  void _stopNotificationPolling({bool hideBanner = true}) {
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = null;
+    _lastSeenNotificationId = null;
+    _activeBannerNotificationId = null;
+    _unreadNotificationCount = 0;
+    if (hideBanner && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    }
+  }
+
+  Future<List<String>> _ensureJoinedSocietiesForPolling(String email) async {
+    final existing = _joinedSocietyNames();
+    if (existing.isNotEmpty) return existing;
+
+    final res = await _societyService.getMySocieties(email: email);
+    if (res['success'] == true) {
+      final List<String> names =
+          (res['societies'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+      if (!mounted) return names;
+      setState(() {
+        _currentUser = {...?_currentUser, 'joinedSocieties': names};
+      });
+      unawaited(_persistCurrentUser(_currentUser));
+      return names;
+    }
+
+    return <String>[];
+  }
+
+  Future<void> _pollForNewNotifications() async {
+    if (!mounted) return;
+    if (_pollingInFlight) return;
+
+    final user = _currentUser;
+    if (user == null) return;
+
+    final email = (user['email'] as String?)?.toLowerCase().trim();
+    if (email == null || email.isEmpty) return;
+
+    _pollingInFlight = true;
+    try {
+      final societyNames = await _ensureJoinedSocietiesForPolling(email);
+      if (societyNames.isEmpty) {
+        if (mounted && _unreadNotificationCount != 0) {
+          setState(() {
+            _unreadNotificationCount = 0;
+          });
+        }
+        return;
+      }
+
+      final token = user['auth_token'] as String?;
+      final futures = societyNames.toSet().map((societyName) async {
+        final res = await _societyService.getNotifications(
+          societyName: societyName,
+          viewerEmail: email,
+          authToken: token,
+        );
+        if (res['success'] != true) return null;
+        final raw = (res['notifications'] as List<dynamic>? ?? [])
+            .cast<Map<String, dynamic>>();
+        if (raw.isEmpty) return null;
+
+        final unreadCount = raw.where((m) => m['read'] != true).length;
+
+        // Alert on the most recent unread notification.
+        final unread = raw.firstWhere(
+          (m) => m['read'] != true,
+          orElse: () => <String, dynamic>{},
+        );
+        final latestUnread = unread.isEmpty
+            ? null
+            : _GlobalNotificationItem.fromJson(unread, societyName);
+
+        return _NotificationPollResult(
+          unreadCount: unreadCount,
+          latestUnread: latestUnread,
+        );
+      }).toList();
+
+      final results = await Future.wait(futures);
+      final typed = results.whereType<_NotificationPollResult>().toList();
+
+      final totalUnread = typed.fold<int>(0, (sum, r) => sum + r.unreadCount);
+      if (mounted && totalUnread != _unreadNotificationCount) {
+        setState(() {
+          _unreadNotificationCount = totalUnread;
+        });
+      }
+
+      final candidates = typed
+          .map((r) => r.latestUnread)
+          .whereType<_GlobalNotificationItem>()
+          .toList();
+      if (candidates.isEmpty) return;
+
+      candidates.sort((a, b) {
+        final cmp = b.createdAt.compareTo(a.createdAt);
+        if (cmp != 0) return cmp;
+        return b.id.compareTo(a.id);
+      });
+      final latest = candidates.first;
+
+      final lastId = _lastSeenNotificationId;
+      if (lastId != null && latest.id == lastId) return;
+
+      _lastSeenNotificationId = latest.id;
+      _showTopNotificationBanner(latest);
+    } catch (_) {
+      // Don't surface polling failures; the drawer already shows API errors.
+      return;
+    } finally {
+      _pollingInFlight = false;
+    }
+  }
+
+  void _showTopNotificationBanner(_GlobalNotificationItem item) {
+    if (!mounted) return;
+
+    _activeBannerNotificationId = item.id;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentMaterialBanner();
+
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        content: Text(
+          '${item.societyName}: ${item.message}',
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              messenger.hideCurrentMaterialBanner();
+              _activeBannerNotificationId = null;
+            },
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      if (_activeBannerNotificationId != item.id) return;
+      messenger.hideCurrentMaterialBanner();
+      _activeBannerNotificationId = null;
+    });
+  }
+
+  String _badgeLabel(int count) {
+    if (count > 99) return '99+';
+    return '$count';
   }
 
   Future<void> _refreshSocietyRatings() async {
@@ -250,6 +433,8 @@ class _HomePageState extends State<HomePage> {
         _currentUser = parsed;
       });
 
+      _startNotificationPollingIfNeeded();
+
       final email = (parsed['email'] as String?)?.toLowerCase();
       if (email != null && email.isNotEmpty) {
         unawaited(_loadJoinedSocieties(email));
@@ -283,6 +468,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _stopNotificationPolling(hideBanner: false);
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -313,11 +499,13 @@ class _HomePageState extends State<HomePage> {
         _currentUser = null;
       });
       unawaited(_persistCurrentUser(null));
+      _stopNotificationPolling();
     } else if (value is Map<String, dynamic>) {
       setState(() {
         _currentUser = value;
       });
       unawaited(_persistCurrentUser(_currentUser));
+      _startNotificationPollingIfNeeded();
       // Load joined societies from the API if the user object has an email
       final email = (value['email'] as String?)?.toLowerCase();
       if (email != null && email.isNotEmpty) {
@@ -356,6 +544,32 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AboutUsPage()));
+  }
+
+  List<String> _joinedSocietyNames() {
+    return (_currentUser?['joinedSocieties'] as List?)
+            ?.map((e) => e.toString())
+            .where((s) => s.trim().isNotEmpty)
+            .toList() ??
+        <String>[];
+  }
+
+  void _openNotificationsHub() {
+    if (_currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to view notifications.')),
+      );
+      return;
+    }
+
+    unawaited(_pollForNewNotifications());
+
+    setState(() {
+      _notificationsDrawerEpoch++;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
   }
 
   void _openSocietiesPage() {
@@ -492,7 +706,21 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final joined = _joinedSocietyNames();
     return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: _currentUser != null
+          ? Drawer(
+              child: AllNotificationsPanel(
+                key: ValueKey(_notificationsDrawerEpoch),
+                currentUser: _currentUser,
+                joinedSocietyNames: joined,
+                onNotificationReadChanged: () {
+                  unawaited(_pollForNewNotifications());
+                },
+              ),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Row(
@@ -532,6 +760,44 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(
               _showHeaderSearch ? Icons.close : Icons.search,
               color: Colors.white,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: _openNotificationsHub,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white,
+                ),
+                if (_unreadNotificationCount > 0)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      child: Text(
+                        _badgeLabel(_unreadNotificationCount),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           IconButton(
@@ -867,6 +1133,311 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
+}
+
+class AllNotificationsPanel extends StatefulWidget {
+  final Map<String, dynamic>? currentUser;
+  final List<String> joinedSocietyNames;
+  final VoidCallback? onNotificationReadChanged;
+
+  const AllNotificationsPanel({
+    super.key,
+    required this.currentUser,
+    required this.joinedSocietyNames,
+    this.onNotificationReadChanged,
+  });
+
+  @override
+  State<AllNotificationsPanel> createState() => _AllNotificationsPanelState();
+}
+
+class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
+  final SocietyService _societyService = SocietyService();
+
+  bool _loading = true;
+  List<_GlobalNotificationItem> _items = [];
+  List<String> _societyNames = [];
+  String? _emptyMessage;
+
+  String? get _viewerEmail => widget.currentUser?['email'] as String?;
+  String? get _authToken => widget.currentUser?['auth_token'] as String?;
+
+  @override
+  void initState() {
+    super.initState();
+    _societyNames = List<String>.from(widget.joinedSocietyNames);
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant AllNotificationsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldList = List<String>.from(oldWidget.joinedSocietyNames)..sort();
+    final newList = List<String>.from(widget.joinedSocietyNames)..sort();
+    if (!listEquals(oldList, newList)) {
+      _societyNames = List<String>.from(widget.joinedSocietyNames);
+      unawaited(_load());
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+
+    final email = _viewerEmail;
+    if (email == null || email.isEmpty) {
+      setState(() {
+        _items = [];
+        _emptyMessage = 'Please sign in to view notifications.';
+        _loading = false;
+      });
+      return;
+    }
+
+    if (_societyNames.isEmpty) {
+      final joinedRes = await _societyService.getMySocieties(email: email);
+      if (joinedRes['success'] == true) {
+        _societyNames = (joinedRes['societies'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .where((s) => s.trim().isNotEmpty)
+            .toList();
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _items = [];
+          _emptyMessage =
+              joinedRes['message']?.toString() ?? 'Could not load societies.';
+          _loading = false;
+        });
+        return;
+      }
+    }
+
+    if (_societyNames.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _items = [];
+        _emptyMessage = 'Join a society to receive notifications.';
+        _loading = false;
+      });
+      return;
+    }
+
+    final failures = <String>[];
+    final futures = _societyNames.toSet().map((societyName) async {
+      final res = await _societyService.getNotifications(
+        societyName: societyName,
+        viewerEmail: email,
+        authToken: _authToken,
+      );
+      if (res['success'] != true) {
+        failures.add(
+          '$societyName: ${res['message']?.toString() ?? 'Could not load.'}',
+        );
+        return <_GlobalNotificationItem>[];
+      }
+      final raw = (res['notifications'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>();
+      return raw
+          .map((m) => _GlobalNotificationItem.fromJson(m, societyName))
+          .toList();
+    }).toList();
+
+    final lists = await Future.wait(futures);
+    final merged = lists.expand((e) => e).toList();
+    merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (!mounted) return;
+    setState(() {
+      _items = merged;
+      if (merged.isEmpty && failures.isNotEmpty) {
+        _emptyMessage = failures.first;
+      } else {
+        _emptyMessage = null;
+      }
+      _loading = false;
+    });
+  }
+
+  String _timestampLabel(DateTime utc) {
+    final local = utc.toLocal();
+    final dd = local.day.toString().padLeft(2, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    final yy = (local.year % 100).toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$dd/$mm/$yy  $hh:$min';
+  }
+
+  Future<void> _markRead(_GlobalNotificationItem item) async {
+    final token = _authToken;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in again to mark read.')),
+      );
+      return;
+    }
+
+    final res = await _societyService.markNotificationRead(
+      notificationId: item.id,
+      authToken: token,
+    );
+
+    if (!mounted) return;
+    if (res['success'] == true) {
+      setState(() {
+        _items = _items
+            .map(
+              (x) => x.id == item.id ? x.copyWith(read: true) : x,
+            )
+            .toList();
+      });
+
+      widget.onNotificationReadChanged?.call();
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(res['message']?.toString() ?? 'Updated.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Notifications',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _load,
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _items.isEmpty
+                  ? ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Text(
+                              _emptyMessage ?? 'No notifications yet.',
+                              style: TextStyle(color: Colors.grey.shade700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _items.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final n = _items[index];
+                        return Card(
+                          child: ListTile(
+                            title: Text(
+                              n.message,
+                              style: TextStyle(
+                                fontWeight: n.read
+                                    ? FontWeight.normal
+                                    : FontWeight.w700,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${n.societyName} · ${_timestampLabel(n.createdAt)}',
+                            ),
+                            trailing: n.read
+                                ? null
+                                : TextButton(
+                                    onPressed: () => _markRead(n),
+                                    child: const Text('Mark read'),
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlobalNotificationItem {
+  final int id;
+  final String type;
+  final String message;
+  final String link;
+  final DateTime createdAt;
+  final bool read;
+  final String societyName;
+
+  const _GlobalNotificationItem({
+    required this.id,
+    required this.type,
+    required this.message,
+    required this.link,
+    required this.createdAt,
+    required this.read,
+    required this.societyName,
+  });
+
+  factory _GlobalNotificationItem.fromJson(
+    Map<String, dynamic> json,
+    String societyName,
+  ) {
+    return _GlobalNotificationItem(
+      id: (json['id'] as int?) ?? 0,
+      type: (json['type'] as String?) ?? '',
+      message: (json['message'] as String?) ?? '',
+      link: (json['link'] as String?) ?? '',
+      createdAt:
+          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      read: json['read'] == true,
+      societyName: societyName,
+    );
+  }
+
+  _GlobalNotificationItem copyWith({bool? read}) {
+    return _GlobalNotificationItem(
+      id: id,
+      type: type,
+      message: message,
+      link: link,
+      createdAt: createdAt,
+      read: read ?? this.read,
+      societyName: societyName,
+    );
+  }
+}
+
+class _NotificationPollResult {
+  final int unreadCount;
+  final _GlobalNotificationItem? latestUnread;
+
+  const _NotificationPollResult({
+    required this.unreadCount,
+    required this.latestUnread,
+  });
 }
 
 class _HeroStatChip extends StatelessWidget {
