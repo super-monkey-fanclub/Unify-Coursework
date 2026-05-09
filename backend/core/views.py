@@ -61,6 +61,14 @@ def _author_display_name(user: User) -> str:
     return user.email.split('@')[0]
 
 
+def _password_requirement_error(password: str) -> str | None:
+    if len(password) < 8:
+        return 'Password must be at least 8 characters.'
+    if re.search(r'[^\w\s]', password) is None:
+        return 'Password must include at least one symbol.'
+    return None
+
+
 def _issue_auth_token(user: User) -> str:
     return signing.dumps({'uid': user.id}, salt=AUTH_TOKEN_SALT)
 
@@ -298,6 +306,10 @@ def register_view(request: HttpRequest):
 
     if User.objects.filter(email=email).exists():
         return JsonResponse({'error': 'An account with that email already exists.'}, status=409)
+
+    password_error = _password_requirement_error(password)
+    if password_error:
+        return JsonResponse({'error': password_error}, status=400)
 
     opt_in = bool(data.get('opt_in_email', False))
 
@@ -1132,8 +1144,9 @@ def account_settings_view(request: HttpRequest):
         updated = True
 
     if new_password:
-        if len(new_password) < 8:
-            return JsonResponse({'error': 'Password must be at least 8 characters.'}, status=400)
+        password_error = _password_requirement_error(new_password)
+        if password_error:
+            return JsonResponse({'error': password_error}, status=400)
         user.set_password(new_password)
         updated = True
 

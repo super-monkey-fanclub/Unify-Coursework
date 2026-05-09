@@ -73,6 +73,23 @@ class RegistrationTests(TestCase):
 		self.assertEqual(user.account_type, 'regular')
 		self.assertTrue(response.json().get('auth_token'))
 
+	def test_register_rejects_password_without_symbol(self):
+		response = self.client.post(
+			'/api/auth/register/',
+			data={
+				'name': 'New User',
+				'email': 'plain-password@example.com',
+				'password': 'Password123',
+			},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertEqual(
+			response.json()['error'],
+			'Password must include at least one symbol.',
+		)
+
 
 class ReviewPollTokenAuthTests(TestCase):
 	def setUp(self):
