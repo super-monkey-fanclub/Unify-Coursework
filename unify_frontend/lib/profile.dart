@@ -229,6 +229,7 @@ class _AuthPageState extends State<AuthPage> {
               decoration: const InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
+                helperText: 'Minimum 8 characters & one symbol',
               ),
               obscureText: true,
               validator: (val) {
