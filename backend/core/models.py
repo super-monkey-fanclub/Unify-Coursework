@@ -36,6 +36,8 @@ class Society(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=50)
+    # Optional URL for a representative image for the society
+    image_url = models.CharField(max_length=500, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

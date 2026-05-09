@@ -331,6 +331,31 @@ def _serialize_info(info: SocietyInfo) -> dict:
     }
 
 
+@require_http_methods(['GET'])
+def societies_list_view(request: HttpRequest):
+    """Return a JSON list of all societies with basic metadata.
+
+    This endpoint is intentionally lightweight so the frontend can show
+    the societies, including an optional `image_url` field when available.
+    """
+    qs = Society.objects.all().order_by('name')
+    out = []
+    for s in qs:
+        avg = Review.objects.filter(society=s).aggregate(avg=Avg('rating'))['avg'] or 0
+        members = Membership.objects.filter(society=s).count()
+        out.append({
+            'id': s.id,
+            'name': s.name,
+            'description': s.description,
+            'category': s.category,
+            'image_url': s.image_url or '',
+            'member_count': members,
+            'average_rating': float(avg) if avg else 0,
+        })
+
+    return JsonResponse({'societies': out})
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def register_view(request: HttpRequest):

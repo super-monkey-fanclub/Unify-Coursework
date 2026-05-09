@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'services/society_service.dart';
+import 'services/api_config.dart';
 
 enum SocietySortOption {
   alphabeticalAsc,
@@ -66,8 +67,14 @@ class SocietySummary {
 class SocietiesPage extends StatefulWidget {
   final String? userEmail;
   final String? userAuthToken;
+  final List<String>? initialJoinedSocieties;
 
-  const SocietiesPage({super.key, this.userEmail, this.userAuthToken});
+  const SocietiesPage({
+    super.key,
+    this.userEmail,
+    this.userAuthToken,
+    this.initialJoinedSocieties,
+  });
 
   @override
   State<SocietiesPage> createState() => _SocietiesPageState();
@@ -89,16 +96,33 @@ class _SocietiesPageState extends State<SocietiesPage> {
   @override
   void initState() {
     super.initState();
-    _allSocieties = _seedSocieties();
-    _filteredSocieties = List.from(_allSocieties);
+    _allSocieties = [];
+    _filteredSocieties = [];
     _searchController.addListener(_applyFilters);
 
-    final email = widget.userEmail;
-    if (email != null && email.isNotEmpty) {
-      _syncMemberships();
-    } else {
-      _applyFilters();
-    }
+    // Load societies and then apply initial joined data or sync from API.
+    _loadSocieties().then((_) {
+      final email = widget.userEmail;
+      if (widget.initialJoinedSocieties != null) {
+        final names = widget.initialJoinedSocieties ?? <String>[];
+        final Set<String> joinedNames =
+            names.map((s) => s.trim().toLowerCase()).toSet();
+        setState(() {
+          _allSocieties = _allSocieties
+              .map((society) => society.copyWith(
+                    joined: joinedNames.contains(society.name.trim().toLowerCase()),
+                  ))
+              .toList();
+        });
+        _applyFilters();
+        // Still refresh averages
+        unawaited(_refreshAverages());
+      } else if (email != null && email.isNotEmpty) {
+        _syncMemberships();
+      } else {
+        _applyFilters();
+      }
+    });
     // Refresh live average ratings from backend when available
     unawaited(_refreshAverages());
   }
@@ -109,153 +133,50 @@ class _SocietiesPageState extends State<SocietiesPage> {
     super.dispose();
   }
 
-  List<SocietySummary> _seedSocieties() {
-    return const [
-      SocietySummary(
-        name: 'Art Society',
-        description:
-            'A friendly society for drawing, painting, and creative workshops.',
-        category: 'Creative',
-        imageUrl:
-            'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
-        icon: Icons.palette,
-        memberCount: 82,
-        averageRating: 3.6,
-      ),
-      SocietySummary(
-        name: 'Anime Society',
-        description: 'Weekly anime screenings and socials for all fans.',
-        category: 'Culture',
-        imageUrl:
-            'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
-        icon: Icons.tv,
-        memberCount: 101,
-        averageRating: 4.1,
-      ),
-      SocietySummary(
-        name: 'Gaming Society',
-        description: 'Casual and competitive gaming events across many genres.',
-        category: 'Technology',
-        imageUrl:
-            'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
-        icon: Icons.sports_esports,
-        memberCount: 174,
-        averageRating: 4.1,
-      ),
-      SocietySummary(
-        name: 'Music Society',
-        description: 'Jam sessions, open mics, and opportunities to perform.',
-        category: 'Creative',
-        imageUrl:
-            'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
-        icon: Icons.music_note,
-        memberCount: 93,
-        averageRating: 4.0,
-      ),
-      SocietySummary(
-        name: 'Photography Club',
-        description: 'Photo walks, editing tips, and portfolio feedback.',
-        category: 'Creative',
-        imageUrl:
-            'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop',
-        icon: Icons.camera_alt,
-        memberCount: 64,
-        averageRating: 4.1,
-      ),
-      SocietySummary(
-        name: 'Dance Society',
-        description:
-            'Learn routines and perform at events throughout the year.',
-        category: 'Performance',
-        imageUrl:
-            'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop',
-        icon: Icons.music_video,
-        memberCount: 77,
-        averageRating: 4.0,
-      ),
-      SocietySummary(
-        name: 'Drama Club',
-        description: 'Acting workshops, productions, and backstage roles.',
-        category: 'Performance',
-        imageUrl:
-            'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        icon: Icons.theater_comedy,
-        memberCount: 59,
-        averageRating: 1.8,
-      ),
-      SocietySummary(
-        name: 'Coding Society',
-        description: 'Hack nights, project teams, and interview practice.',
-        category: 'Technology',
-        imageUrl:
-            'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop',
-        icon: Icons.code,
-        memberCount: 141,
-        averageRating: 4.7,
-      ),
-      SocietySummary(
-        name: 'Robotics Club',
-        description: 'Build, program, and compete with robotics projects.',
-        category: 'Technology',
-        imageUrl:
-            'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
-        icon: Icons.precision_manufacturing,
-        memberCount: 48,
-        averageRating: 4.3,
-      ),
-      SocietySummary(
-        name: 'Environmental Club',
-        description:
-            'Campus green projects, cleanups and sustainability events.',
-        category: 'Community',
-        imageUrl:
-            'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
-        icon: Icons.eco,
-        memberCount: 56,
-        averageRating: 3.8,
-      ),
-      SocietySummary(
-        name: 'Film Society',
-        description: 'Screenings, discussions and filmmaking workshops.',
-        category: 'Creative',
-        imageUrl:
-            'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        icon: Icons.movie,
-        memberCount: 72,
-        averageRating: 4.1,
-      ),
-      SocietySummary(
-        name: 'Chess Club',
-        description: 'Casual and competitive chess sessions and tournaments.',
-        category: 'Games',
-        imageUrl:
-            'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        icon: Icons.sports_esports,
-        memberCount: 34,
-        averageRating: 2.2,
-      ),
-      SocietySummary(
-        name: 'Cooking Society',
-        description: 'Learn new recipes, cook together and share meals.',
-        category: 'Lifestyle',
-        imageUrl:
-            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop',
-        icon: Icons.restaurant,
-        memberCount: 88,
-        averageRating: 4.0,
-      ),
-      SocietySummary(
-        name: 'Entrepreneurship Society',
-        description:
-            'Startups, pitch nights and networking for student founders.',
-        category: 'Professional',
-        imageUrl:
-            'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
-        icon: Icons.lightbulb,
-        memberCount: 64,
-        averageRating: 3.7,
-      ),
-    ];
+  Future<void> _loadSocieties() async {
+    try {
+      final res = await _societyService.listSocieties();
+      if (res['success'] == true) {
+        final List<dynamic> raw = res['societies'] as List<dynamic>? ?? [];
+        final mapped = raw.map((e) {
+          final Map<String, dynamic> obj = e as Map<String, dynamic>;
+          final name = (obj['name'] ?? obj['title'] ?? '').toString();
+          final description = (obj['description'] ?? '').toString();
+          final category = (obj['category'] ?? 'General').toString();
+          final rawImage = (obj['image_url'] ?? obj['image'] ?? obj['imageUrl'] ?? obj['picture'] ?? '').toString();
+          final imageUrl = _normalizeImageUrl(rawImage);
+          final memberCount = (obj['member_count'] ?? obj['members'] ?? 0) as int? ?? 0;
+          final avg = ((obj['average_rating'] ?? obj['rating']) as num?)?.toDouble() ?? 0.0;
+          return SocietySummary(
+            name: name,
+            description: description,
+            category: category,
+            imageUrl: imageUrl,
+            icon: Icons.group,
+            memberCount: memberCount,
+            averageRating: avg,
+          );
+        }).toList();
+        if (!mounted) return;
+        setState(() {
+          _allSocieties = mapped;
+          _filteredSocieties = List.from(_allSocieties);
+        });
+        return;
+      }
+    } catch (_) {
+      // ignore
+    }
+    if (mounted) setState(() {});
+  }
+
+  String _normalizeImageUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    final s = raw.trim();
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'\/$'), '');
+    if (s.startsWith('/')) return '$base$s';
+    return '$base/$s';
   }
 
   Future<void> _syncMemberships() async {
@@ -270,14 +191,13 @@ class _SocietiesPageState extends State<SocietiesPage> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      final List<String> names =
-          (result['societies'] as List<String>? ?? <String>[]);
-      final Set<String> joinedNames = names.toSet();
+      final List<String> names = (result['societies'] as List<String>? ?? <String>[]);
+      // Normalize joined society names (trim + lowercase) for robust comparison
+      final Set<String> joinedNames = names.map((s) => s.trim().toLowerCase()).toSet();
       _allSocieties = _allSocieties
-          .map(
-            (society) =>
-                society.copyWith(joined: joinedNames.contains(society.name)),
-          )
+          .map((society) => society.copyWith(
+                joined: joinedNames.contains(society.name.trim().toLowerCase()),
+              ))
           .toList();
       _applyFilters();
     }

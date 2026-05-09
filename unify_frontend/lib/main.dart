@@ -7,6 +7,7 @@ import 'profile.dart';
 import 'socieites.dart';
 import 'about_us.dart'; // Add this import
 import 'services/society_service.dart';
+import 'services/api_config.dart';
 
 void main() {
   runApp(const UnifyApp());
@@ -62,135 +63,8 @@ class _HomePageState extends State<HomePage> {
   bool _showHeaderSearch = false;
 
   // All available societies (used to resolve joined society names to objects)
-  List<Society> _allSocieties = [
-    Society(
-      name: 'Art Society',
-      description:
-          'A friendly society for drawing, painting, and creative workshops.',
-      icon: Icons.palette,
-      memberCount: 82,
-      rating: 4.0,
-      imageUrl:
-          'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Anime Society',
-      description: 'Weekly anime screenings and socials for all fans.',
-      icon: Icons.tv,
-      memberCount: 101,
-      rating: 3.8,
-      imageUrl:
-          'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Gaming Society',
-      description: 'Casual and competitive gaming events across many genres.',
-      icon: Icons.sports_esports,
-      memberCount: 174,
-      rating: 4.0,
-      imageUrl:
-          'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Music Society',
-      description: 'Jam sessions, open mics, and opportunities to perform.',
-      icon: Icons.music_note,
-      memberCount: 93,
-      rating: 3.8,
-      imageUrl:
-          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Photography Club',
-      description: 'Photo walks, editing tips, and portfolio feedback.',
-      icon: Icons.camera_alt,
-      memberCount: 64,
-      rating: 4.1,
-      imageUrl:
-          'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Dance Society',
-      description: 'Learn routines and perform at events throughout the year.',
-      icon: Icons.music_video,
-      memberCount: 77,
-      rating: 4.0,
-      imageUrl:
-          'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Drama Club',
-      description: 'Acting workshops, productions, and backstage roles.',
-      icon: Icons.theater_comedy,
-      memberCount: 59,
-      rating: 1.8,
-            imageUrl:
-              'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    ),
-    Society(
-      name: 'Coding Society',
-      description: 'Hack nights, project teams, and interview practice.',
-      icon: Icons.code,
-      memberCount: 141,
-      rating: 4.7,
-      imageUrl:
-          'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Robotics Club',
-      description: 'Build, program, and compete with robotics projects.',
-      icon: Icons.precision_manufacturing,
-      memberCount: 48,
-      rating: 4.3,
-      imageUrl:
-          'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Environmental Club',
-      description: 'Campus green projects, cleanups and sustainability events.',
-      icon: Icons.eco,
-      memberCount: 56,
-      rating: 3.8,
-      imageUrl:
-          'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Film Society',
-      description: 'Screenings, discussions and filmmaking workshops.',
-      icon: Icons.movie,
-      memberCount: 72,
-      rating: 4.0,
-      imageUrl:
-        'https://plus.unsplash.com/premium_photo-1723867528308-539f3936c339?q=80&w=1926&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    ),
-    Society(
-      name: 'Chess Club',
-      description: 'Casual and competitive chess sessions and tournaments.',
-      icon: Icons.sports_esports,
-      memberCount: 34,
-      rating: 2.2,
-      imageUrl:
-        'https://images.unsplash.com/photo-1695480542225-bc22cac128d0?q=80&w=695&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    ),
-    Society(
-      name: 'Cooking Society',
-      description: 'Learn new recipes, cook together and share meals.',
-      icon: Icons.restaurant,
-      memberCount: 88,
-      rating: 4.0,
-      imageUrl:
-          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop',
-    ),
-    Society(
-      name: 'Entrepreneurship Society',
-      description: 'Startups, pitch nights and networking for student founders.',
-      icon: Icons.lightbulb,
-      memberCount: 64,
-      rating: 3.7,
-      imageUrl:
-          'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop',
-    ),
-  ];
+  // Will be populated from backend at startup.
+  List<Society> _allSocieties = [];
 
   Map<String, dynamic>? _currentUser;
   final SocietyService _societyService = SocietyService();
@@ -207,7 +81,8 @@ class _HomePageState extends State<HomePage> {
     _filteredItems = List.from(_placeholderItems);
     _searchController.addListener(_onSearchChanged);
     _restoreSession();
-    // Refresh live ratings from backend
+    // Load societies from backend and then refresh ratings
+    unawaited(_loadAllSocieties());
     unawaited(_refreshSocietyRatings());
   }
 
@@ -418,6 +293,51 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  String _normalizeImageUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    final s = raw.trim();
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    // If the backend returns a relative path (e.g. /media/...), prefix base URL.
+    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'\/$'), '');
+    if (s.startsWith('/')) return '$base$s';
+    return '$base/$s';
+  }
+
+  Future<void> _loadAllSocieties({String? viewerEmail}) async {
+    try {
+      final res = await _societyService.listSocieties(viewerEmail: viewerEmail);
+      if (res['success'] == true) {
+        final List<dynamic> raw = res['societies'] as List<dynamic>? ?? [];
+        final List<Society> mapped = raw.map((m) {
+          final Map<String, dynamic> obj = m as Map<String, dynamic>;
+          final String name = (obj['name'] ?? obj['title'] ?? '').toString();
+          final String description = (obj['description'] ?? '').toString();
+          final int memberCount = (obj['member_count'] ?? obj['members'] ?? obj['memberCount'] ?? 0) as int? ?? 0;
+          final double rating = ((obj['rating'] ?? obj['average_rating'] ?? obj['avg_rating']) as num?)?.toDouble() ?? 0.0;
+          final String rawImage = (obj['image_url'] ?? obj['image'] ?? obj['imageUrl'] ?? obj['picture'] ?? '').toString();
+          final String imageUrl = _normalizeImageUrl(rawImage);
+          return Society(
+            name: name,
+            description: description,
+            icon: Icons.group,
+            memberCount: memberCount,
+            rating: rating,
+            imageUrl: imageUrl,
+          );
+        }).toList();
+
+        if (!mounted) return;
+        setState(() {
+          _allSocieties = mapped;
+        });
+        return;
+      }
+      // on failure, leave _allSocieties as-is (empty)
+    } catch (_) {
+      // ignore
+    }
+  }
+
   Future<void> _restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     final rawUser = prefs.getString(_sessionUserStorageKey);
@@ -582,6 +502,9 @@ class _HomePageState extends State<HomePage> {
           userAuthToken: _currentUser != null
               ? _currentUser!['auth_token'] as String?
               : null,
+          // Provide the homepage's joined societies so the societies page
+          // filters exactly match what the homepage shows.
+          initialJoinedSocieties: _joinedSocietyNames(),
         ),
       ),
     );
@@ -1807,6 +1730,15 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   List<Map<String, dynamic>> _reviews = [];
 
   @override
+  void didUpdateWidget(covariant ReviewsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If societies were previously empty and are now populated, reload reviews.
+    if ((oldWidget.societies.isEmpty) && widget.societies.isNotEmpty) {
+      unawaited(_loadSampleReviews());
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     _loadSampleReviews();
@@ -1815,10 +1747,34 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   Future<void> _loadSampleReviews() async {
     setState(() => _loading = true);
     final List<Map<String, dynamic>> collected = [];
+    // Build a list of societies to query: prefer provided ones, else fetch from API
+    final List<Society> societiesToQuery = [];
+    if (widget.societies.isNotEmpty) {
+      societiesToQuery.addAll(widget.societies);
+    } else {
+      try {
+        final res = await _service.listSocieties();
+        if (res['success'] == true) {
+          final List<dynamic> raw = res['societies'] as List<dynamic>? ?? [];
+          for (final obj in raw) {
+            final m = obj as Map<String, dynamic>;
+            societiesToQuery.add(Society(
+              name: (m['name'] ?? '').toString(),
+              description: (m['description'] ?? '').toString(),
+              icon: Icons.group,
+              memberCount: (m['member_count'] ?? 0) as int? ?? 0,
+              rating: ((m['average_rating'] ?? m['rating']) as num?)?.toDouble() ?? 0.0,
+              imageUrl: (m['image_url'] ?? '').toString(),
+            ));
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
 
-    // pick up to 3 societies to show reviews for (spread across list)
-    final samples = <Society>[];
-    if (widget.societies.isEmpty) {
+    if (societiesToQuery.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _reviews = [];
         _loading = false;
@@ -1826,28 +1782,33 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       return;
     }
 
-    samples.add(widget.societies[0]);
-    if (widget.societies.length > 2) samples.add(widget.societies[2]);
-    if (widget.societies.length > 4) samples.add(widget.societies[4]);
-
-    for (final s in samples) {
-      final res = await _service.getReviews(
-        societyName: s.name,
-        viewerEmail: widget.userEmail,
-      );
-      if (res['success'] == true) {
-        final List<Map<String, dynamic>> revs =
-            (res['reviews'] as List<dynamic>).cast<Map<String, dynamic>>();
-        for (final r in revs.take(2)) {
-          collected.add({
-            ...r,
-            'society_name': s.name,
-            'society_rating': s.rating,
-          });
+    final seenIds = <int>{};
+    // Iterate societies in order and collect up to 5 unique reviews from DB
+    for (final s in societiesToQuery) {
+      try {
+        final res = await _service.getReviews(societyName: s.name, viewerEmail: widget.userEmail);
+        if (res['success'] == true) {
+          final List<Map<String, dynamic>> revs = (res['reviews'] as List<dynamic>).cast<Map<String, dynamic>>();
+          for (final r in revs) {
+            final id = (r['id'] as num?)?.toInt();
+            if (id == null) continue;
+            if (seenIds.contains(id)) continue;
+            seenIds.add(id);
+            collected.add({
+              ...r,
+              'society_name': s.name,
+              'society_rating': s.rating,
+            });
+            if (collected.length >= 5) break;
+          }
         }
+      } catch (_) {
+        // ignore individual society failures
       }
-      if (collected.length >= 6) break;
+      if (collected.length >= 5) break;
     }
+
+    // no further fallback; we've already attempted to collect from available societies
 
     if (!mounted) return;
     setState(() {

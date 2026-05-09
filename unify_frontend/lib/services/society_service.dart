@@ -24,6 +24,33 @@ class SocietyService {
     };
   }
 
+  /// Fetch the list of societies from the backend.
+  /// Returns `{ success: true, societies: List<Map<String,dynamic>> }` on success.
+  Future<Map<String, dynamic>> listSocieties({String? viewerEmail}) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/').replace(queryParameters: {
+        if (viewerEmail != null && viewerEmail.isNotEmpty) 'viewer_email': viewerEmail,
+      });
+
+      final response = await http
+          .get(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        final List<dynamic> raw = body['societies'] as List<dynamic>? ?? [];
+        return {'success': true, 'societies': raw.cast<Map<String, dynamic>>() };
+      }
+
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Could not load societies.',
+      };
+    } catch (error) {
+      return _connectionError(error);
+    }
+  }
+
   /// Join a society for the given user email.
   /// Returns a map with 'success' and 'message'.
   Future<Map<String, dynamic>> joinSociety({

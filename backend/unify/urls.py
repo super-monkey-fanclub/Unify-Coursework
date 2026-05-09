@@ -25,6 +25,7 @@ from core.views import (
     get_notifications_view,
     mark_notification_read_view,
     account_settings_view,
+    societies_list_view,
 )
 
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path("api/auth/login/", login_view, name="api-login"),
     # Societies/memberships
     path("api/societies/join/", join_society_view, name="api-join-society"),
+    path("api/societies/", societies_list_view, name="api-societies-list"),
     path("api/societies/my/", my_societies_view, name="api-my-societies"),
     path("api/societies/members/", society_members_view, name="api-society-members"),
     path("api/societies/members/promote/", promote_member_view, name="api-promote-member"),

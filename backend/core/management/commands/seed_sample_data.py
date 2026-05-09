@@ -10,15 +10,15 @@ User = get_user_model()
 
 
 SOCIETY_TEMPLATES = [
-    ('Art Society', 'A friendly society for drawing, painting, and creative workshops.', 'Creative'),
-    ('Anime Society', 'Weekly anime screenings and socials for all fans.', 'Culture'),
-    ('Gaming Society', 'Casual and competitive gaming events across many genres.', 'Technology'),
-    ('Music Society', 'Jam sessions, open mics, and opportunities to perform.', 'Creative'),
-    ('Photography Club', 'Photo walks, editing tips, and portfolio feedback.', 'Creative'),
-    ('Dance Society', 'Learn routines and perform at events throughout the year.', 'Performance'),
-    ('Drama Club', 'Acting workshops, productions, and backstage roles.', 'Performance'),
-    ('Coding Society', 'Hack nights, project teams, and interview practice.', 'Technology'),
-    ('Robotics Club', 'Build, program, and compete with robotics projects.', 'Technology'),
+    ('Art Society', 'A friendly society for drawing, painting, and creative workshops.', 'Creative', 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&auto=format&fit=crop'),
+    ('Anime Society', 'Weekly anime screenings and socials for all fans.', 'Culture', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop'),
+    ('Gaming Society', 'Casual and competitive gaming events across many genres.', 'Technology', 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop'),
+    ('Music Society', 'Jam sessions, open mics, and opportunities to perform.', 'Creative', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop'),
+    ('Photography Club', 'Photo walks, editing tips, and portfolio feedback.', 'Creative', 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop'),
+    ('Dance Society', 'Learn routines and perform at events throughout the year.', 'Performance', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop'),
+    ('Drama Club', 'Acting workshops, productions, and backstage roles.', 'Performance', 'https://plus.unsplash.com/premium_photo-1684923604128-c48f46b0cb00?q=80&w=1471&auto=format&fit=crop'),
+    ('Coding Society', 'Hack nights, project teams, and interview practice.', 'Technology', 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&auto=format&fit=crop'),
+    ('Robotics Club', 'Build, program, and compete with robotics projects.', 'Technology', 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop'),
 ]
 
 SAMPLE_COMMENTS = [
@@ -69,8 +69,15 @@ class Command(BaseCommand):
 
         self.stdout.write('Seeding societies...')
         societies = []
-        for name, desc, category in SOCIETY_TEMPLATES:
-            s, _ = Society.objects.get_or_create(name=name, defaults={'description': desc, 'category': category})
+        for tpl in SOCIETY_TEMPLATES:
+            # support both (name, desc, category) and (name, desc, category, image_url)
+            if len(tpl) == 4:
+                name, desc, category, image_url = tpl
+                defaults = {'description': desc, 'category': category, 'image_url': image_url}
+            else:
+                name, desc, category = tpl
+                defaults = {'description': desc, 'category': category}
+            s, _ = Society.objects.get_or_create(name=name, defaults=defaults)
             societies.append(s)
 
         self.stdout.write(f'Ensuring {users_count} users...')
