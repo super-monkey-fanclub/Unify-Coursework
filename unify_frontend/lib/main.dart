@@ -1654,12 +1654,45 @@ class SocietyCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.network(
-                  society.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Container(color: Theme.of(context).colorScheme.primary),
-                ),
+                // Show network image when available, otherwise a styled placeholder
+                society.imageUrl.trim().isEmpty
+                    ? Container(
+                        color: Theme.of(context).colorScheme.primary,
+                        child: Center(
+                          child: Icon(
+                            society.icon,
+                            size: 64,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      )
+                    : Image.network(
+                        society.imageUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Theme.of(context).colorScheme.primary,
+                          child: Center(
+                            child: Icon(
+                              society.icon,
+                              size: 64,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ),
+                      ),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
