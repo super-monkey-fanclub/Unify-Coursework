@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'services/auth_service.dart';
 
 class AccountSettingsPage extends StatefulWidget {
@@ -93,10 +92,12 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (val) {
-                  if (val == null || val.trim().isEmpty)
+                  if (val == null || val.trim().isEmpty) {
                     return 'Email is required';
-                  if (!val.contains('@') || !val.contains('.'))
+                  }
+                  if (!val.contains('@') || !val.contains('.')) {
                     return 'Enter a valid email address';
+                  }
                   return null;
                 },
               ),
@@ -110,8 +111,9 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 obscureText: true,
                 validator: (val) {
                   // Current password is required to change settings
-                  if (val == null || val.isEmpty)
+                  if (val == null || val.isEmpty) {
                     return 'Enter your current password';
+                  }
                   return null;
                 },
               ),
@@ -124,8 +126,9 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 ),
                 obscureText: true,
                 validator: (val) {
-                  if (val != null && val.isNotEmpty && val.length < 8)
+                  if (val != null && val.isNotEmpty && val.length < 8) {
                     return 'Password must be at least 8 characters';
+                  }
                   return null;
                 },
               ),

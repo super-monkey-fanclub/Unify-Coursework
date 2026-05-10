@@ -92,8 +92,9 @@ class AuthService {
     try {
       final Map<String, dynamic> bodyPayload = {};
       if (email != null) bodyPayload['email'] = email;
-      if (currentPassword != null)
+      if (currentPassword != null) {
         bodyPayload['current_password'] = currentPassword;
+      }
       if (newEmail != null) bodyPayload['new_email'] = newEmail;
       if (newPassword != null) bodyPayload['new_password'] = newPassword;
       if (optInEmail != null) bodyPayload['opt_in_email'] = optInEmail;

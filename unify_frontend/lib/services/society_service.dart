@@ -86,7 +86,6 @@ class SocietyService {
   }
 
   /// Fetch the list of societies the given user has joined.
-  /// Returns a map with 'success', and on success 'societies' as List<String>.
   Future<Map<String, dynamic>> getMySocieties({required String email}) async {
     try {
       final response = await http

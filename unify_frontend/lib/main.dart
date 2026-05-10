@@ -59,7 +59,6 @@ class _HomePageState extends State<HomePage> {
     'Music Society',
     'Photography Club',
   ];
-  late List<String> _filteredItems;
   bool _showHeaderSearch = false;
 
   // All available societies (used to resolve joined society names to objects)
@@ -78,7 +77,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _filteredItems = List.from(_placeholderItems);
     _searchController.addListener(_onSearchChanged);
     _restoreSession();
     // Load societies from backend and then refresh ratings
@@ -377,11 +375,7 @@ class _HomePageState extends State<HomePage> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       if (query.isEmpty) {
-        _filteredItems = List.from(_placeholderItems);
       } else {
-        _filteredItems = _placeholderItems
-            .where((s) => s.toLowerCase().contains(query))
-            .toList();
       }
     });
   }
@@ -520,9 +514,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openSocietyDetails(Society society) {
-    _navigateToSocietyDetails(society);
-  }
 
   void _navigateToSocietyDetails(
     Society society, {
@@ -1045,33 +1036,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildResultsList() {
-    if (_filteredItems.isEmpty) {
-      return Center(
-        child: Text(
-          'No results',
-          style: TextStyle(color: Colors.grey.shade600),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      itemCount: _filteredItems.length,
-      separatorBuilder: (_, __) => const Divider(),
-      itemBuilder: (context, index) {
-        final item = _filteredItems[index];
-        return ListTile(
-          leading: const CircleAvatar(child: Icon(Icons.groups)),
-          title: Text(item),
-          subtitle: const Text('Placeholder description'),
-          onTap: () {
-            // Placeholder: navigate to society details
-          },
-        );
-      },
-    );
-  }
 }
 
 class AllNotificationsPanel extends StatefulWidget {
@@ -1390,7 +1354,7 @@ class _HeroStatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -1422,7 +1386,7 @@ class _HeaderStatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
+        color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -1550,7 +1514,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
                 opacity: showArrows ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
                 child: Material(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   shape: const CircleBorder(),
                   child: IconButton(
                     color: Colors.white,
@@ -1586,7 +1550,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
                 opacity: showArrows ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
                 child: Material(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   shape: const CircleBorder(),
                   child: IconButton(
                     color: Colors.white,
@@ -1657,7 +1621,7 @@ class SocietyCard extends StatelessWidget {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1678,7 +1642,7 @@ class SocietyCard extends StatelessWidget {
                           child: Icon(
                             society.icon,
                             size: 64,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                       )
@@ -1704,7 +1668,7 @@ class SocietyCard extends StatelessWidget {
                             child: Icon(
                               society.icon,
                               size: 64,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                             ),
                           ),
                         ),
@@ -1715,8 +1679,8 @@ class SocietyCard extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.2),
-                        Colors.black.withOpacity(0.55),
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.55),
                       ],
                     ),
                   ),

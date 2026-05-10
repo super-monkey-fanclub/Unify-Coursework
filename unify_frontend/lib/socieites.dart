@@ -583,7 +583,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
                                       errorBuilder: (_, __, ___) => Container(
                                         color: Theme.of(
                                           context,
-                                        ).colorScheme.primary.withOpacity(0.15),
+                                        ).colorScheme.primary.withValues(alpha: 0.15),
                                         child: Icon(
                                           society.icon,
                                           size: 60,
@@ -706,7 +706,7 @@ class _MetaPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -1458,7 +1458,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                 widget.imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
                   child: Icon(widget.icon, size: 80, color: Colors.white),
                 ),
               ),
@@ -1685,7 +1685,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
                                   decoration: BoxDecoration(
                                     color: Theme.of(
                                       context,
-                                    ).colorScheme.primary.withOpacity(0.08),
+                                    ).colorScheme.primary.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Column(
@@ -1898,10 +1898,11 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       _loading = true;
     });
     await Future.wait([_loadPolls(), _loadNotifications()]);
-    if (mounted)
+    if (mounted) {
       setState(() {
         _loading = false;
       });
+    }
   }
 
   Future<void> _loadPolls() async {
@@ -2267,32 +2268,6 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     return '$dd/$mm/$yy\n$hh:$min';
   }
 
-  String _monthLabel(String monthKey) {
-    final parts = monthKey.split('-');
-    if (parts.length != 2) return monthKey;
-
-    final year = int.tryParse(parts[0]);
-    final month = int.tryParse(parts[1]);
-    if (year == null || month == null || month < 1 || month > 12) {
-      return monthKey;
-    }
-
-    const names = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${names[month - 1]} $year';
-  }
 
   Future<void> _showReviewAnalyticsDialog() async {
     final email = widget.userEmail;
@@ -2392,7 +2367,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                 ),
                 const SizedBox(height: 12),
                 Card(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -2548,7 +2523,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
         ),
         const SizedBox(height: 12),
         Card(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Wrap(
@@ -2821,7 +2796,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                     CircleAvatar(
                       backgroundColor: Theme.of(
                         context,
-                      ).colorScheme.primary.withOpacity(0.1),
+                      ).colorScheme.primary.withValues(alpha: 0.1),
                       child: Icon(
                         widget.societyIcon,
                         color: Theme.of(context).colorScheme.primary,
@@ -3486,7 +3461,7 @@ class _PollCountdownState extends State<PollCountdown> {
     if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
     final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '${mm}:${ss}';
+    return '$mm:$ss';
   }
 
   @override

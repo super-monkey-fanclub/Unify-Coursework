@@ -87,7 +87,9 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     );
                 if (updated != null && updated.containsKey('user')) {
-                  Navigator.of(context).pop(updated['user']);
+                  if (context.mounted) {
+                    Navigator.of(context).pop(updated['user']);
+                  }
                 }
               },
               icon: const Icon(Icons.settings),
@@ -126,10 +128,12 @@ class _AuthPageState extends State<AuthPage> {
               ),
               keyboardType: TextInputType.emailAddress,
               validator: (val) {
-                if (val == null || val.trim().isEmpty)
+                if (val == null || val.trim().isEmpty) {
                   return 'Email is required';
-                if (!_isValidEmail(val.trim()))
+                }
+                if (!_isValidEmail(val.trim())) {
                   return 'Enter a valid email address';
+                }
                 return null;
               },
             ),
@@ -162,7 +166,9 @@ class _AuthPageState extends State<AuthPage> {
 
                       if (result['success'] == true) {
                         _showMessage('Login successful');
-                        Navigator.of(context).pop(result['user']);
+                        if (context.mounted) {
+                          Navigator.of(context).pop(result['user']);
+                        }
                       } else {
                         _showMessage(result['message'] ?? 'Login failed.');
                       }
@@ -200,10 +206,12 @@ class _AuthPageState extends State<AuthPage> {
               maxLength: 50,
               inputFormatters: [LengthLimitingTextInputFormatter(50)],
               validator: (val) {
-                if (val == null || val.trim().isEmpty)
+                if (val == null || val.trim().isEmpty) {
                   return 'Preferred name is required';
-                if (val.trim().length > 50)
+                }
+                if (val.trim().length > 50) {
                   return 'Name must be 50 characters or fewer';
+                }
                 return null;
               },
             ),
@@ -216,10 +224,12 @@ class _AuthPageState extends State<AuthPage> {
               ),
               keyboardType: TextInputType.emailAddress,
               validator: (val) {
-                if (val == null || val.trim().isEmpty)
+                if (val == null || val.trim().isEmpty) {
                   return 'Email is required';
-                if (!_isValidEmail(val.trim()))
+                }
+                if (!_isValidEmail(val.trim())) {
                   return 'Enter a valid email address';
+                }
                 return null;
               },
             ),
@@ -246,8 +256,9 @@ class _AuthPageState extends State<AuthPage> {
               ),
               obscureText: true,
               validator: (val) {
-                if (val == null || val.isEmpty)
+                if (val == null || val.isEmpty) {
                   return 'Please confirm your password';
+                }
                 if (val != _regPassword.text) return 'Passwords do not match';
                 return null;
               },
