@@ -97,7 +97,7 @@ CREATE TABLE review_response(
     FOREIGN KEY (admin_id) REFERENCES users(user_id) ON DELETE CASCADE
 )   
 
---helps to speed up quereis that filer by these entities, improving speed of application
+--helps to speed up queries that filter by these entities, improving speed
 INDEX idx_user_email ON users(email);
 INDEX idx_society_name ON society(name);
 INDEX idx_poll_society ON poll(society_id);
