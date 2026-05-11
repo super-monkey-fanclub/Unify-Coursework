@@ -3168,6 +3168,7 @@ class _StatItem {
 
   const _StatItem(this.label, this.value, this.icon);
 }
+// ── Small stat item for stat cards and summaries ──────────────────────────
 class _TrendPoint {
   final DateTime month;
   final int memberCount;
@@ -3179,6 +3180,7 @@ class _TrendPoint {
     required this.reviewCount,
   });
 }
+// ── Trend point model used by charts and analytics ────────────────────────
 
 class _MembersReviewsLegend extends StatelessWidget {
   final Color membersColor;
@@ -3284,6 +3286,7 @@ class _MembersReviewsLineChart extends StatelessWidget {
   }
 }
 
+// Chart painter for members vs reviews trend ─────────────────────────────
 class _MembersReviewsLineChartPainter extends CustomPainter {
   final List<_TrendPoint> points;
   final List<String> labels;

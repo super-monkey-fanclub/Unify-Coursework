@@ -623,6 +623,7 @@ class _HomePageState extends State<HomePage> {
               ),
             )
           : null,
+      // ── Homepage header (AppBar): title, stats and navigation buttons ──
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: LayoutBuilder(
@@ -671,6 +672,7 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
+        // Header buttons: Search, Notifications, Account, About Us
         actions: [
           IconButton(
             tooltip: 'Search',
@@ -780,6 +782,7 @@ class _HomePageState extends State<HomePage> {
                 ).textTheme.bodyMedium?.copyWith(height: 1.35),
               ),
               const SizedBox(height: 14),
+              // ── My societies (joined) ─────────────────────────────────
               if (_currentUser != null) ...[
                 const SizedBox(height: 8),
                 Builder(
@@ -994,6 +997,7 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(color: Colors.grey.shade700),
               ),
               const SizedBox(height: 10),
+              // ── Homepage hero carousel (featured societies) ─────────────
               SizedBox(
                 height: 350,
                 child: HeroCarousel(
@@ -1007,6 +1011,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 18),
+              // ── Reviews section (recent reviews & ratings) ───────────────
               ReviewsSection(
                 societies: _allSocieties,
                 userEmail: _currentUser != null
@@ -1321,6 +1326,7 @@ class _GlobalNotificationItem {
   }
 }
 
+// ── Notification poll result (helper) ─────────────────────────────────────
 class _NotificationPollResult {
   final int unreadCount;
   final _GlobalNotificationItem? latestUnread;
@@ -1332,6 +1338,7 @@ class _NotificationPollResult {
 }
 
 
+// ── Small header stat chip (used in AppBar) ───────────────────────────────
 class _HeaderStatChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1921,6 +1928,8 @@ class Society {
   });
 }
 
+// ── Data model: simple Society descriptor used across the UI ───────────────
+
 class SearchResultsPage extends StatefulWidget {
   final String query;
   final List<String> items;
@@ -1984,4 +1993,3 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 }
 
-// ── Search results page ───────────────────────────────────────────────────
