@@ -1909,7 +1909,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
   bool _canCreateInfo = false;
   List<_SocietyPoll> _polls = [];
   List<_SocietyInfo> _infoItems = [];
-  // notifications removed: UI simplified to not show per-notification items
+ 
 
   @override
   void initState() {
@@ -1918,8 +1918,6 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
   }
 
 // ── converts raw data into displayable labels ─────────
-  // notifications removed: label helper not needed
-
   Future<void> _loadData() async {
     setState(() {
       _loading = true;
@@ -3095,7 +3093,7 @@ class _StatItem {
 
   const _StatItem(this.label, this.value, this.icon);
 }
-// ── Small stat item for stat cards and summaries ──────────────────────────
+// ── Small stat item for socieites and summaries ──────────────────────────
 class _TrendPoint {
   final DateTime month;
   final int memberCount;
@@ -3108,7 +3106,6 @@ class _TrendPoint {
   });
 }
 // ── Trend point model used by charts and analytics ────────────────────────
-
 class _MembersReviewsLegend extends StatelessWidget {
   final Color membersColor;
   final Color reviewsColor;
@@ -3162,7 +3159,7 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-// ── Members vs Reviews chart widget (renders axis labels and plot) ─────
+// ── Members vs Reviews chart widget ─────────────
 class _MembersReviewsLineChart extends StatelessWidget {
   final List<_TrendPoint> points;
   final Color axisColor;
@@ -3214,7 +3211,6 @@ class _MembersReviewsLineChart extends StatelessWidget {
   }
 }
 
-// Chart painter for members vs reviews trend ─────────────────────────────
 class _MembersReviewsLineChartPainter extends CustomPainter {
   final List<_TrendPoint> points;
   final List<String> labels;
@@ -3449,4 +3445,4 @@ class _SocietyInfo {
   }
 }
 
-// notifications removed: notification message model no longer used in this view
+

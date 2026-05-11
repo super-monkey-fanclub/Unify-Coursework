@@ -340,7 +340,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // ── Session: restore persisted user session ─────────
+  // ── Restore persisted user session ─────────
   Future<void> _restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     final rawUser = prefs.getString(_sessionUserStorageKey);
@@ -638,7 +638,7 @@ class _HomePageState extends State<HomePage> {
               ),
             )
           : null,
-      // ── Homepage header (AppBar): title, stats and navigation buttons ──
+      // ── Homepage header  ────────────────────
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: LayoutBuilder(
