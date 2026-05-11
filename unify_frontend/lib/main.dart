@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile.dart';
 import 'socieites.dart';
-import 'about_us.dart'; // Add this import
+import 'about_us.dart'; 
 import 'services/society_service.dart';
 import 'services/api_config.dart';
 
@@ -22,9 +22,9 @@ class UnifyApp extends StatelessWidget {
       title: 'Unify - University of Portsmouth Societies',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF003087), // UoP Blue
-          primary: const Color(0xFF003087), // UoP Blue
-          secondary: const Color(0xFF7B2D8E), // UoP Purple
+          seedColor: const Color(0xFF003087), 
+          primary: const Color(0xFF003087), 
+          secondary: const Color(0xFF7B2D8E), 
         ),
         appBarTheme: const AppBarTheme(
           foregroundColor: Colors.white,
@@ -37,6 +37,7 @@ class UnifyApp extends StatelessWidget {
   }
 }
 
+// ── Home page & scaffold ─────────────────────────────────────────────────
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -61,8 +62,6 @@ class _HomePageState extends State<HomePage> {
   ];
   bool _showHeaderSearch = false;
 
-  // All available societies (used to resolve joined society names to objects)
-  // Will be populated from backend at startup.
   List<Society> _allSocieties = [];
 
   Map<String, dynamic>? _currentUser;
@@ -79,7 +78,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _restoreSession();
-    // Load societies from backend and then refresh ratings
     unawaited(_loadAllSocieties());
     unawaited(_refreshSocietyRatings());
   }
@@ -90,10 +88,10 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Avoid creating multiple timers.
+    
     if (_notificationPollTimer != null) return;
 
-    // Poll immediately so unread notifications surface quickly.
+   
     unawaited(_pollForNewNotifications());
 
     _notificationPollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
@@ -167,7 +165,7 @@ class _HomePageState extends State<HomePage> {
 
         final unreadCount = raw.where((m) => m['read'] != true).length;
 
-        // Alert on the most recent unread notification.
+      
         final unread = raw.firstWhere(
           (m) => m['read'] != true,
           orElse: () => <String, dynamic>{},
@@ -211,7 +209,6 @@ class _HomePageState extends State<HomePage> {
       _lastSeenNotificationId = latest.id;
       _showTopNotificationBanner(latest);
     } catch (_) {
-      // Don't surface polling failures; the drawer already shows API errors.
       return;
     } finally {
       _pollingInFlight = false;
@@ -287,7 +284,6 @@ class _HomePageState extends State<HomePage> {
         _allSocieties = updated;
       });
     } catch (_) {
-      // ignore network errors; keep seeded values
     }
   }
 
@@ -295,7 +291,6 @@ class _HomePageState extends State<HomePage> {
     if (raw == null || raw.isEmpty) return '';
     final s = raw.trim();
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
-    // If the backend returns a relative path (e.g. /media/...), prefix base URL.
     final base = ApiConfig.baseUrl.replaceAll(RegExp(r'\/$'), '');
     if (s.startsWith('/')) return '$base$s';
     return '$base/$s';
@@ -330,9 +325,7 @@ class _HomePageState extends State<HomePage> {
         });
         return;
       }
-      // on failure, leave _allSocieties as-is (empty)
     } catch (_) {
-      // ignore
     }
   }
 
@@ -420,7 +413,6 @@ class _HomePageState extends State<HomePage> {
       });
       unawaited(_persistCurrentUser(_currentUser));
       _startNotificationPollingIfNeeded();
-      // Load joined societies from the API if the user object has an email
       final email = (value['email'] as String?)?.toLowerCase();
       if (email != null && email.isNotEmpty) {
         _loadJoinedSocieties(email);
@@ -496,8 +488,6 @@ class _HomePageState extends State<HomePage> {
           userAuthToken: _currentUser != null
               ? _currentUser!['auth_token'] as String?
               : null,
-          // Provide the homepage's joined societies so the societies page
-          // filters exactly match what the homepage shows.
           initialJoinedSocieties: _joinedSocietyNames(),
         ),
       ),
@@ -537,7 +527,6 @@ class _HomePageState extends State<HomePage> {
           initialAverageRating: society.rating,
           onMembershipChanged: (joined, count) {
             setState(() {
-              // update the local _allSocieties list so UI stays in sync
               _allSocieties = _allSocieties.map((s) {
                 if (s.name == society.name) {
                   return Society(
@@ -551,7 +540,6 @@ class _HomePageState extends State<HomePage> {
                 }
                 return s;
               }).toList();
-              // also update _currentUser.joinedSocieties when membership changes
               final js =
                   (_currentUser?['joinedSocieties'] as List?)
                       ?.map((e) => e.toString())
@@ -792,7 +780,6 @@ class _HomePageState extends State<HomePage> {
                 ).textTheme.bodyMedium?.copyWith(height: 1.35),
               ),
               const SizedBox(height: 14),
-              // Joined societies quick access
               if (_currentUser != null) ...[
                 const SizedBox(height: 8),
                 Builder(
@@ -932,7 +919,6 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ],
-              // Prompt when not signed in
               if (_currentUser == null) ...[
                 const SizedBox(height: 8),
                 Card(
@@ -1284,6 +1270,8 @@ class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
   }
 }
 
+// ── Notifications panel (all notifications) ─────────────────────────────────
+
 class _GlobalNotificationItem {
   final int id;
   final String type;
@@ -1343,38 +1331,6 @@ class _NotificationPollResult {
   });
 }
 
-// ignore: unused_element
-class _HeroStatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _HeroStatChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _HeaderStatChip extends StatelessWidget {
   final IconData icon;
@@ -1409,6 +1365,7 @@ class _HeaderStatChip extends StatelessWidget {
   }
 }
 
+// ── Hero carousel (featured societies) ─────────────────────────────────────
 class HeroCarousel extends StatefulWidget {
   final List<Society> societies;
   final String? userEmail;
@@ -1506,7 +1463,6 @@ class _HeroCarouselState extends State<HeroCarousel> {
             ),
           ),
 
-          // Left arrow (centered to carousel)
           Align(
             alignment: Alignment.centerLeft,
             child: Padding(
@@ -1542,7 +1498,6 @@ class _HeroCarouselState extends State<HeroCarousel> {
             ),
           ),
 
-          // Right arrow (centered to carousel)
           Align(
             alignment: Alignment.centerRight,
             child: Padding(
@@ -1578,7 +1533,6 @@ class _HeroCarouselState extends State<HeroCarousel> {
             ),
           ),
 
-          // Page indicators at bottom
           Positioned(
             left: 0,
             right: 0,
@@ -1635,7 +1589,6 @@ class SocietyCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Show network image when available, otherwise a styled placeholder
                 society.imageUrl.trim().isEmpty
                     ? Container(
                         color: Theme.of(context).colorScheme.primary,
@@ -1728,6 +1681,7 @@ class SocietyCard extends StatelessWidget {
   }
 }
 
+// ── Reviews section (community reviews) ───────────────────────────────────
 class ReviewsSection extends StatefulWidget {
   final List<Society> societies;
   final String? userEmail;
@@ -1746,7 +1700,6 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   @override
   void didUpdateWidget(covariant ReviewsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If societies were previously empty and are now populated, reload reviews.
     if ((oldWidget.societies.isEmpty) && widget.societies.isNotEmpty) {
       unawaited(_loadSampleReviews());
     }
@@ -1761,7 +1714,6 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   Future<void> _loadSampleReviews() async {
     setState(() => _loading = true);
     final List<Map<String, dynamic>> collected = [];
-    // Build a list of societies to query: prefer provided ones, else fetch from API
     final List<Society> societiesToQuery = [];
     if (widget.societies.isNotEmpty) {
       societiesToQuery.addAll(widget.societies);
@@ -1783,7 +1735,6 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           }
         }
       } catch (_) {
-        // ignore
       }
     }
 
@@ -1797,7 +1748,6 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     }
 
     final seenIds = <int>{};
-    // Iterate societies in order and collect up to 5 unique reviews from DB
     for (final s in societiesToQuery) {
       try {
         final res = await _service.getReviews(societyName: s.name, viewerEmail: widget.userEmail);
@@ -1817,12 +1767,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           }
         }
       } catch (_) {
-        // ignore individual society failures
       }
       if (collected.length >= 5) break;
     }
 
-    // no further fallback; we've already attempted to collect from available societies
 
     if (!mounted) return;
     setState(() {
@@ -1914,7 +1862,6 @@ class _ReviewsSectionState extends State<ReviewsSection> {
                                   ),
                                   TextButton(
                                     onPressed: () {
-                                      // navigate to society details
                                       final society = widget.societies
                                           .firstWhere(
                                             (s) =>
@@ -2029,7 +1976,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   title: Text(item),
                   subtitle: const Text('Placeholder description'),
                   onTap: () {
-                    // Placeholder: navigate to details
                   },
                 );
               },
@@ -2037,3 +1983,5 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     );
   }
 }
+
+// ── Search results page ───────────────────────────────────────────────────

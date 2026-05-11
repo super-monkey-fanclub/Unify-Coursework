@@ -64,6 +64,7 @@ class SocietySummary {
   }
 }
 
+// ── Societies listing & filters ───────────────────────────────────────────
 class SocietiesPage extends StatefulWidget {
   final String? userEmail;
   final String? userAuthToken;
@@ -100,7 +101,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
     _filteredSocieties = [];
     _searchController.addListener(_applyFilters);
 
-    // Load societies and then apply initial joined data or sync from API.
     _loadSocieties().then((_) {
       final email = widget.userEmail;
       if (widget.initialJoinedSocieties != null) {
@@ -115,7 +115,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
               .toList();
         });
         _applyFilters();
-        // Still refresh averages
         unawaited(_refreshAverages());
       } else if (email != null && email.isNotEmpty) {
         _syncMemberships();
@@ -123,7 +122,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
         _applyFilters();
       }
     });
-    // Refresh live average ratings from backend when available
     unawaited(_refreshAverages());
   }
 
@@ -165,7 +163,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
         return;
       }
     } catch (_) {
-      // ignore
     }
     if (mounted) setState(() {});
   }
@@ -192,7 +189,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
 
     if (result['success'] == true) {
       final List<String> names = (result['societies'] as List<String>? ?? <String>[]);
-      // Normalize joined society names (trim + lowercase) for robust comparison
       final Set<String> joinedNames = names.map((s) => s.trim().toLowerCase()).toSet();
       _allSocieties = _allSocieties
           .map((society) => society.copyWith(
@@ -202,7 +198,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
       _applyFilters();
     }
 
-    // When memberships synced, also refresh live averages
     unawaited(_refreshAverages());
 
     if (mounted) {
@@ -285,7 +280,6 @@ class _SocietiesPageState extends State<SocietiesPage> {
       });
       _applyFilters();
     } catch (_) {
-      // Silently ignore network errors — keep seeded values
     }
   }
 
@@ -731,6 +725,7 @@ class MembersPage extends StatefulWidget {
   State<MembersPage> createState() => _MembersPageState();
 }
 
+// ── Members list page ────────────────────────────────────────────────────
 class _MembersPageState extends State<MembersPage> {
   final SocietyService _societyService = SocietyService();
   bool _loading = true;
@@ -905,6 +900,8 @@ class _EmptySocietyState extends StatelessWidget {
   }
 }
 
+// ── Society details & reviews ─────────────────────────────────────────────
+
 class SocietyReview {
   final int id;
   final String author;
@@ -1061,7 +1058,6 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     );
     if (!mounted) return;
 
-    // Prefer backend reviews; fall back to seeded mock reviews when empty/unavailable
     final List<dynamic> rawFromBackend = (result['success'] == true)
         ? (result['reviews'] as List<dynamic>? ?? [])
         : [];
@@ -2326,7 +2322,6 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       return;
     }
 
-    // Get stats from response
     final stats = result['stats'] as Map<String, dynamic>? ?? {};
     final int totalMembers = stats['total_members'] as int? ?? 0;
     final int adminCount = stats['admin_count'] as int? ?? 0;
@@ -2354,7 +2349,6 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Member Statistics
                 _buildStatCard(
                   context,
                   title: 'Members',
@@ -2368,7 +2362,6 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Activity Statistics
                 _buildStatCard(
                   context,
                   title: 'Activity (All Time)',
@@ -3120,6 +3113,8 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
   }
 }
 
+// ── Society admin: polls, infos, notifications ───────────────────────────
+
 class _SocietyPoll {
   final int id;
   final String title;
@@ -3173,20 +3168,6 @@ class _StatItem {
 
   const _StatItem(this.label, this.value, this.icon);
 }
-
-// ignore: unused_element
-class _MonthlyReviewTrend {
-  final String month;
-  final double avgRating;
-  final int reviewCount;
-
-  const _MonthlyReviewTrend({
-    required this.month,
-    required this.avgRating,
-    required this.reviewCount,
-  });
-}
-
 class _TrendPoint {
   final DateTime month;
   final int memberCount;
@@ -3340,11 +3321,9 @@ class _MembersReviewsLineChartPainter extends CustomPainter {
       ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
 
-    // Axes
     canvas.drawLine(plotRect.bottomLeft, plotRect.bottomRight, axisPaint);
     canvas.drawLine(plotRect.bottomLeft, plotRect.topLeft, axisPaint);
 
-    // Determine y max
     var yMax = 0;
     for (final p in points) {
       if (p.memberCount > yMax) yMax = p.memberCount;
@@ -3389,11 +3368,9 @@ class _MembersReviewsLineChartPainter extends CustomPainter {
       }
     }
 
-    // Series: members + reviews
     drawSeries(color: membersColor, valueOf: (p) => p.memberCount);
     drawSeries(color: reviewsColor, valueOf: (p) => p.reviewCount);
 
-    // Y labels (0 and max)
     final yLabelStyle = labelStyle;
     void paintText(String text, Offset offset) {
       final tp = TextPainter(
@@ -3407,7 +3384,6 @@ class _MembersReviewsLineChartPainter extends CustomPainter {
     paintText('0', Offset(plotRect.left - 18, plotRect.bottom - 8));
     paintText('$yMax', Offset(plotRect.left - 34, plotRect.top - 8));
 
-    // X labels
     final labelStep = points.length <= 6 ? 1 : ((points.length / 6).ceil());
     for (var i = 0; i < labels.length; i += labelStep) {
       final label = labels[i];

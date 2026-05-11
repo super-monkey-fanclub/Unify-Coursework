@@ -78,7 +78,6 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () async {
-                // Open account settings page and refresh user on return
                 final updated = await Navigator.of(context)
                     .push<Map<String, dynamic>?>(
                       MaterialPageRoute(
@@ -98,7 +97,6 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: () {
-                // Pop back to the caller indicating sign-out explicitly.
                 Navigator.of(context).pop({'__logout__': true});
               },
               icon: const Icon(Icons.logout),
@@ -287,7 +285,6 @@ class _AuthPageState extends State<AuthPage> {
 
                       if (result['success'] == true) {
                         _showMessage('Registration successful');
-                        // Optionally switch back to login form after sign-up
                         setState(() => _showSignUp = false);
                       } else {
                         _showMessage(
