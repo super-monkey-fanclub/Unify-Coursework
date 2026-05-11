@@ -1909,7 +1909,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
   bool _canCreateInfo = false;
   List<_SocietyPoll> _polls = [];
   List<_SocietyInfo> _infoItems = [];
-  List<_NotificationItem> _notifications = [];
+  // notifications removed: UI simplified to not show per-notification items
 
   @override
   void initState() {
@@ -1917,11 +1917,14 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     _loadData();
   }
 
+// ── converts raw data into displayable labels ─────────
+  // notifications removed: label helper not needed
+
   Future<void> _loadData() async {
     setState(() {
       _loading = true;
     });
-    await Future.wait([_loadPolls(), _loadNotifications()]);
+    await _loadPolls();
     if (mounted) {
       setState(() {
         _loading = false;
@@ -1980,24 +1983,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     }
   }
 
-  Future<void> _loadNotifications() async {
-    final result = await _societyService.getNotifications(
-      societyName: widget.societyName,
-      viewerEmail: widget.userEmail,
-      authToken: widget.userAuthToken,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final List<dynamic> raw = result['notifications'] as List<dynamic>? ?? [];
-      setState(() {
-        _notifications = raw
-            .map((e) => _NotificationItem.fromJson(e as Map<String, dynamic>))
-            .toList();
-      });
-    }
-  }
+  
 
   Future<void> _voteOnPoll(_SocietyPoll poll, _SocietyPollOption option) async {
     final email = widget.userEmail;
@@ -2846,71 +2832,6 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
               ),
             ),
             const SizedBox(height: 12),
-            if (_notifications.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Notifications',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._notifications.map(
-                        (n) => ListTile(
-                          title: Text(
-                            n.message,
-                            style: TextStyle(
-                              fontWeight: n.read
-                                  ? FontWeight.normal
-                                  : FontWeight.w700,
-                            ),
-                          ),
-                          subtitle: Text(_timestampLabel(n.createdAt)),
-                          trailing: n.read
-                              ? null
-                              : TextButton(
-                                  onPressed: () async {
-                                    final messenger = ScaffoldMessenger.of(context);
-                                    final res = await _societyService
-                                        .markNotificationRead(
-                                          notificationId: n.id,
-                                          authToken: widget.userAuthToken,
-                                        );
-                                    if (!mounted) return;
-                                    if (res['success'] == true) {
-                                      await _loadNotifications();
-                                      if (!mounted) return;
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            res['message'] ?? 'Marked read',
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      if (!mounted) return;
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            res['message'] ??
-                                                'Could not mark read',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  child: const Text('Mark read'),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             const SizedBox(height: 12),
             if (_loading)
               const Center(child: CircularProgressIndicator())
@@ -3528,33 +3449,4 @@ class _SocietyInfo {
   }
 }
 
-class _NotificationItem {
-  final int id;
-  final String type;
-  final String message;
-  final String link;
-  final DateTime createdAt;
-  final bool read;
-
-  const _NotificationItem({
-    required this.id,
-    required this.type,
-    required this.message,
-    required this.link,
-    required this.createdAt,
-    required this.read,
-  });
-
-  factory _NotificationItem.fromJson(Map<String, dynamic> json) {
-    return _NotificationItem(
-      id: (json['id'] as int?) ?? 0,
-      type: (json['type'] as String?) ?? 'info',
-      message: (json['message'] as String?) ?? '',
-      link: (json['link'] as String?) ?? '',
-      createdAt:
-          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
-          DateTime.now(),
-      read: (json['read'] as bool?) ?? false,
-    );
-  }
-}
+// notifications removed: notification message model no longer used in this view

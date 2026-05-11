@@ -218,7 +218,7 @@ class _HomePageState extends State<HomePage> {
     messenger.showMaterialBanner(
       MaterialBanner(
         content: Text(
-          '${item.societyName}: ${item.message}',
+          _simplifiedNotificationLabel(item),
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
@@ -240,6 +240,23 @@ class _HomePageState extends State<HomePage> {
       messenger.hideCurrentMaterialBanner();
       _activeBannerNotificationId = null;
     });
+  }
+
+  // ── Helpers for notifications, session and data loading ────────────────
+  String _simplifiedNotificationLabel(_GlobalNotificationItem item) {
+    final t = item.type.toLowerCase();
+    String pretty;
+    if (t.contains('announce')) {
+      pretty = 'Announcement';
+    } else if (t.contains('poll')) {
+      pretty = 'Poll';
+    } else if (t.contains('info')) {
+      pretty = 'Info';
+    } else {
+      final parts = t.split(RegExp(r'[_\s-]'));
+      pretty = parts.where((p) => p.isNotEmpty).map((p) => p[0].toUpperCase() + p.substring(1)).join(' ');
+    }
+    return '$pretty in ${item.societyName}';
   }
 
   String _badgeLabel(int count) {
@@ -1151,6 +1168,7 @@ class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
     });
   }
 
+
   String _timestampLabel(DateTime utc) {
     final local = utc.toLocal();
     final dd = local.day.toString().padLeft(2, '0');
@@ -1159,6 +1177,22 @@ class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
     final hh = local.hour.toString().padLeft(2, '0');
     final min = local.minute.toString().padLeft(2, '0');
     return '$dd/$mm/$yy  $hh:$min';
+  }
+
+  String _simplifiedNotificationLabel(_GlobalNotificationItem item) {
+    final t = item.type.toLowerCase();
+    String pretty;
+    if (t.contains('announce')) {
+      pretty = 'Announcement';
+    } else if (t.contains('poll')) {
+      pretty = 'Poll';
+    } else if (t.contains('info')) {
+      pretty = 'Info';
+    } else {
+      final parts = t.split(RegExp(r'[_\s-]'));
+      pretty = parts.where((p) => p.isNotEmpty).map((p) => p[0].toUpperCase() + p.substring(1)).join(' ');
+    }
+    return '$pretty in ${item.societyName}';
   }
 
   Future<void> _markRead(_GlobalNotificationItem item) async {
@@ -1246,16 +1280,14 @@ class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
                         return Card(
                           child: ListTile(
                             title: Text(
-                              n.message,
+                              _simplifiedNotificationLabel(n),
                               style: TextStyle(
                                 fontWeight: n.read
                                     ? FontWeight.normal
                                     : FontWeight.w700,
                               ),
                             ),
-                            subtitle: Text(
-                              '${n.societyName} · ${_timestampLabel(n.createdAt)}',
-                            ),
+                            subtitle: Text(_timestampLabel(n.createdAt)),
                             trailing: n.read
                                 ? null
                                 : TextButton(
