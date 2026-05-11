@@ -53,7 +53,6 @@ class _HomePageState extends State<HomePage> {
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  // Search suggestions are generated from `_allSocieties` at runtime.
   bool _showHeaderSearch = false;
 
   List<Society> _allSocieties = [];
@@ -290,6 +289,7 @@ class _HomePageState extends State<HomePage> {
     return '$base/$s';
   }
 
+  // ── fetch list of societies from backend and map to model ─────────────
   Future<void> _loadAllSocieties({String? viewerEmail}) async {
     try {
       final res = await _societyService.listSocieties(viewerEmail: viewerEmail);
@@ -323,6 +323,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // ── Session: restore persisted user session ─────────
   Future<void> _restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     final rawUser = prefs.getString(_sessionUserStorageKey);
@@ -360,7 +361,6 @@ class _HomePageState extends State<HomePage> {
 
   void _onSearchChanged() {
     setState(() {
-      // trigger UI update for search (suggestions are derived from _allSocieties)
     });
   }
 
@@ -670,7 +670,7 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
-        // Header buttons: Search, Notifications, Account, About Us
+        // Header buttons: Search, Notifications, Account, About Us ──────────────
         actions: [
           IconButton(
             tooltip: 'Search',
@@ -1027,6 +1027,7 @@ class _HomePageState extends State<HomePage> {
 
 }
 
+// ── Notifications panel  ────────────────────────────────────────────────────────────────
 class AllNotificationsPanel extends StatefulWidget {
   final Map<String, dynamic>? currentUser;
   final List<String> joinedSocietyNames;
@@ -1273,7 +1274,6 @@ class _AllNotificationsPanelState extends State<AllNotificationsPanel> {
   }
 }
 
-// ── Notifications panel (all notifications) ─────────────────────────────────
 
 class _GlobalNotificationItem {
   final int id;
@@ -1324,7 +1324,7 @@ class _GlobalNotificationItem {
   }
 }
 
-// ── Notification poll result (helper) ─────────────────────────────────────
+
 class _NotificationPollResult {
   final int unreadCount;
   final _GlobalNotificationItem? latestUnread;
@@ -1336,7 +1336,7 @@ class _NotificationPollResult {
 }
 
 
-// ── Small header stat chip (used in AppBar) ───────────────────────────────
+// ── Small header  ───────────────────────────────
 class _HeaderStatChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1370,7 +1370,7 @@ class _HeaderStatChip extends StatelessWidget {
   }
 }
 
-// ── Hero carousel (featured societies) ─────────────────────────────────────
+// ── Society carousel (featured societies) ─────────────────────────────────────
 class HeroCarousel extends StatefulWidget {
   final List<Society> societies;
   final String? userEmail;
@@ -1930,7 +1930,7 @@ class Society {
 
 class SearchResultsPage extends StatefulWidget {
   final String query;
-  final List<dynamic> items; // accepts List<Society> or List<String> for tests
+  final List<dynamic> items; 
 
   const SearchResultsPage({
     super.key,
@@ -1949,7 +1949,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   void initState() {
     super.initState();
     final q = widget.query.toLowerCase();
-    // Normalize incoming items to `List<Society>` for display.
     final normalized = widget.items.map((e) {
       if (e is Society) return e;
       final name = e?.toString() ?? '';
