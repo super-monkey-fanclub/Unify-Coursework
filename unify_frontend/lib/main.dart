@@ -1343,6 +1343,7 @@ class _NotificationPollResult {
   });
 }
 
+// ignore: unused_element
 class _HeroStatChip extends StatelessWidget {
   final IconData icon;
   final String label;

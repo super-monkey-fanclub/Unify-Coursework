@@ -44,6 +44,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   void _showMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -86,10 +87,9 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ),
                     );
+                if (!mounted) return;
                 if (updated != null && updated.containsKey('user')) {
-                  if (context.mounted) {
-                    Navigator.of(context).pop(updated['user']);
-                  }
+                  Navigator.of(context).pop(updated['user']);
                 }
               },
               icon: const Icon(Icons.settings),
@@ -166,9 +166,8 @@ class _AuthPageState extends State<AuthPage> {
 
                       if (result['success'] == true) {
                         _showMessage('Login successful');
-                        if (context.mounted) {
-                          Navigator.of(context).pop(result['user']);
-                        }
+                        if (!mounted) return;
+                        Navigator.of(context).pop(result['user']);
                       } else {
                         _showMessage(result['message'] ?? 'Login failed.');
                       }

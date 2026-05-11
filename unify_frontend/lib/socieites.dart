@@ -757,13 +757,15 @@ class _MembersPageState extends State<MembersPage> {
         _viewerIsAdmin = res['viewer_is_admin'] == true;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            res['message']?.toString() ?? 'Could not load members.',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              res['message']?.toString() ?? 'Could not load members.',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -797,6 +799,7 @@ class _MembersPageState extends State<MembersPage> {
                   trailing: _viewerIsAdmin && !isAdminMember
                       ? TextButton(
                           onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (context) => AlertDialog(
@@ -818,6 +821,7 @@ class _MembersPageState extends State<MembersPage> {
                                 ],
                               ),
                             );
+                            if (!mounted) return;
                             if (confirm != true) return;
                             final adminEmail = widget.userEmail ?? '';
                             final memberId = (m['id'] as int?);
@@ -829,7 +833,7 @@ class _MembersPageState extends State<MembersPage> {
                             );
                             if (!mounted) return;
                             if (res['success'] == true) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(
                                   content: Text(
                                     res['message']?.toString() ?? 'Promoted.',
@@ -838,7 +842,7 @@ class _MembersPageState extends State<MembersPage> {
                               );
                               await _loadMembers();
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(
                                   content: Text(
                                     res['message']?.toString() ??
@@ -1067,13 +1071,15 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
         .toList(growable: true);
 
     if (rawMaps.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not load reviews.',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message']?.toString() ?? 'Could not load reviews.',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     final List<SocietyReview> reviews = rawMaps
@@ -1126,9 +1132,11 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
   }) async {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in before reacting.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in before reacting.')),
+        );
+      }
       return;
     }
 
@@ -1154,19 +1162,22 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
         }).toList();
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not react to review.',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message']?.toString() ?? 'Could not react to review.',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
   Future<void> _deleteReviewAsAdmin(SocietyReview review) async {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1186,6 +1197,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       ),
     );
 
+    if (!mounted) return;
     if (confirmed != true) return;
 
     final result = await _societyService.deleteReviewAsAdmin(
@@ -1197,14 +1209,14 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(result['message']?.toString() ?? 'Review deleted.'),
         ),
       );
       await _loadReviews();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             result['message']?.toString() ?? 'Could not delete review.',
@@ -1218,6 +1230,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     final controller = TextEditingController();
     final responseText = await showDialog<String>(
       context: context,
@@ -1258,14 +1271,14 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(result['message']?.toString() ?? 'Response saved.'),
         ),
       );
       await _loadReviews();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             result['message']?.toString() ?? 'Could not save response.',
@@ -1298,21 +1311,25 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
           _memberCount = _memberCount + 1;
         });
         widget.onMembershipChanged?.call(_joined, _memberCount);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result['message']?.toString() ?? 'Joined ${widget.name}.',
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message']?.toString() ?? 'Joined ${widget.name}.',
+              ),
             ),
-          ),
-        );
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result['message']?.toString() ?? 'Could not join society.',
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message']?.toString() ?? 'Could not join society.',
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
       return;
     }
@@ -1322,9 +1339,11 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       _memberCount = (_memberCount - 1).clamp(0, 1000000);
     });
     widget.onMembershipChanged?.call(_joined, _memberCount);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('You left ${widget.name}.')));
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('You left ${widget.name}.')));
+    }
   }
 
   Future<void> _submitReview() async {
@@ -1393,21 +1412,25 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
       });
       FocusScope.of(context).unfocus();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? 'Review sent.'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']?.toString() ?? 'Review sent.'),
+          ),
+        );
+      }
 
       await _loadReviews();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message']?.toString() ?? 'Could not submit review.',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message']?.toString() ?? 'Could not submit review.',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -2033,6 +2056,8 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     final optionsController = TextEditingController();
     final durationController = TextEditingController(text: '60');
 
+    final messenger = ScaffoldMessenger.of(context);
+
     final bool? submit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -2117,7 +2142,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
         options.length < 2 ||
         durationHours == null ||
         durationHours < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text(
             'Enter title, at least 2 options, and a valid time limit.',
@@ -2140,14 +2165,14 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(result['message']?.toString() ?? 'Poll created.'),
         ),
       );
       await _loadPolls();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             result['message']?.toString() ?? 'Could not create poll.',
@@ -2167,6 +2192,8 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
       );
       return;
     }
+
+    final messenger = ScaffoldMessenger.of(context);
 
     final titleController = TextEditingController();
     final contentController = TextEditingController();
@@ -2224,7 +2251,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     contentController.dispose();
 
     if (content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Enter information text before posting.')),
       );
       return;
@@ -2241,14 +2268,14 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(result['message']?.toString() ?? 'Information posted.'),
         ),
       );
       await _loadPolls();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             result['message']?.toString() ?? 'Could not post information.',
@@ -2848,16 +2875,17 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                               ? null
                               : TextButton(
                                   onPressed: () async {
+                                    final messenger = ScaffoldMessenger.of(context);
                                     final res = await _societyService
                                         .markNotificationRead(
                                           notificationId: n.id,
                                           authToken: widget.userAuthToken,
                                         );
+                                    if (!mounted) return;
                                     if (res['success'] == true) {
                                       await _loadNotifications();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      if (!mounted) return;
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             res['message'] ?? 'Marked read',
@@ -2865,9 +2893,8 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
                                         ),
                                       );
                                     } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      if (!mounted) return;
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             res['message'] ??
@@ -3147,6 +3174,7 @@ class _StatItem {
   const _StatItem(this.label, this.value, this.icon);
 }
 
+// ignore: unused_element
 class _MonthlyReviewTrend {
   final String month;
   final double avgRating;
@@ -3157,14 +3185,6 @@ class _MonthlyReviewTrend {
     required this.avgRating,
     required this.reviewCount,
   });
-
-  factory _MonthlyReviewTrend.fromJson(Map<String, dynamic> json) {
-    return _MonthlyReviewTrend(
-      month: (json['month'] as String?) ?? '',
-      avgRating: ((json['avg_rating'] as num?) ?? 0).toDouble(),
-      reviewCount: (json['review_count'] as int?) ?? 0,
-    );
-  }
 }
 
 class _TrendPoint {

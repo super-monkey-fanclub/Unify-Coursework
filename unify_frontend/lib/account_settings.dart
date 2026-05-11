@@ -38,6 +38,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   void _showMessage(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
@@ -58,6 +59,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
       optInEmail: _optIn,
     );
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result['success'] == true) {
