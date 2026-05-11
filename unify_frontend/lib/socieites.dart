@@ -349,6 +349,7 @@ class _SocietiesPageState extends State<SocietiesPage> {
     _applyFilters();
   }
 
+  // ── Events & Polls: page scaffold for society events, polls and infos ──
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1222,6 +1223,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
+  // ── Allows admins to respond to a review ─
   Future<void> _respondToReviewAsAdmin(SocietyReview review) async {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) return;
@@ -1284,6 +1286,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
+  // ── Membership actions: join or leave a society 
   Future<void> _toggleJoin() async {
     final email = widget.userEmail;
     if (email == null || email.isEmpty) {
@@ -1430,6 +1433,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     }
   }
 
+  // ── Navigation: open the Events & Polls page for this society
   void _openNotificationsPage() {
     if (!_joined) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1452,6 +1456,7 @@ class _SocietyDetailsPageState extends State<SocietyDetailsPage> {
     );
   }
 
+  // ── Navigation: open the Members list page
   void _openMembersPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -1924,6 +1929,7 @@ class _SocietyNotificationsPageState extends State<SocietyNotificationsPage> {
     }
   }
 
+  // ── fetch polls, infos and notifications for this society ─────────
   Future<void> _loadPolls() async {
     setState(() {
       _loading = true;
@@ -3235,6 +3241,7 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
+// ── Members vs Reviews chart widget (renders axis labels and plot) ─────
 class _MembersReviewsLineChart extends StatelessWidget {
   final List<_TrendPoint> points;
   final Color axisColor;
@@ -3412,6 +3419,7 @@ class _MembersReviewsLineChartPainter extends CustomPainter {
   }
 }
 
+// ── Poll countdown: small widget showing remaining time for a poll ─────
 class PollCountdown extends StatefulWidget {
   final DateTime closesAt;
 
