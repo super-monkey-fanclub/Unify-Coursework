@@ -540,6 +540,8 @@ def society_members_view(request: HttpRequest):
     society_name = _safe_text(data.get('society_name'))
 
     viewer_email = _safe_text(data.get('viewer_email')).lower()
+    # Optional search query to filter members by name, email or UP number
+    query = _safe_text(data.get('query')).lower()
 
     if not society_name:
         return JsonResponse({'error': 'society_name is required.'}, status=400)
@@ -552,8 +554,18 @@ def society_members_view(request: HttpRequest):
     memberships = (
         Membership.objects.select_related('user')
         .filter(society=society)
-        .order_by('user__up_number')
     )
+
+    # If a search query was provided, filter members by several user fields
+    if query:
+        memberships = memberships.filter(
+            Q(user__email__icontains=query)
+            | Q(user__up_number__icontains=query)
+            | Q(user__first_name__icontains=query)
+            | Q(user__username__icontains=query)
+        )
+
+    memberships = memberships.order_by('user__up_number')
 
     # Determine whether the requesting viewer is an admin of this society
     viewer = None

@@ -17,6 +17,10 @@ python manage.py runserver 0.0.0.0:8000
 cd "unify_frontend"
 flutter run -d chrome
 
+**Django Database**
+http://127.0.0.1:8000/admin/
+
+
 **Run Tests**
 backend:
 powershell -ExecutionPolicy Bypass -File .\run_backend_tests.ps1
@@ -33,3 +37,4 @@ or
 
 cd "unify_frontend"
 flutter test test/frontend_requirements_test.dart test/widget_test.dart test/home_test.dart test/auth_navigation_test.dart test/societies_navigation_and_search_test.dart test/society_review_test.dart
+
