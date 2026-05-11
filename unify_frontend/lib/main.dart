@@ -53,13 +53,7 @@ class _HomePageState extends State<HomePage> {
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final List<String> _placeholderItems = [
-    'Art Society',
-    'Anime Society',
-    'Gaming Society',
-    'Music Society',
-    'Photography Club',
-  ];
+  // Search suggestions are generated from `_allSocieties` at runtime.
   bool _showHeaderSearch = false;
 
   List<Society> _allSocieties = [];
@@ -365,11 +359,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-      } else {
-      }
+      // trigger UI update for search (suggestions are derived from _allSocieties)
     });
   }
 
@@ -495,11 +486,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openSearchResultsPage([String? query]) {
-    final searchQuery = query ?? _searchController.text;
+    final searchQuery = (query ?? _searchController.text).trim();
+    final q = searchQuery.toLowerCase();
+    final matches = _allSocieties.where((s) {
+      if (q.isEmpty) return true;
+      final name = s.name.toLowerCase();
+      final desc = s.description.toLowerCase();
+      return name.contains(q) || desc.contains(q);
+    }).toList();
+
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            SearchResultsPage(query: searchQuery, items: _placeholderItems),
+        builder: (_) => SearchResultsPage(query: searchQuery, items: matches),
       ),
     );
   }
@@ -1932,7 +1930,7 @@ class Society {
 
 class SearchResultsPage extends StatefulWidget {
   final String query;
-  final List<String> items;
+  final List<dynamic> items; // accepts List<Society> or List<String> for tests
 
   const SearchResultsPage({
     super.key,
@@ -1945,17 +1943,31 @@ class SearchResultsPage extends StatefulWidget {
 }
 
 class _SearchResultsPageState extends State<SearchResultsPage> {
-  late List<String> _results;
+  late List<Society> _results;
 
   @override
   void initState() {
     super.initState();
     final q = widget.query.toLowerCase();
+    // Normalize incoming items to `List<Society>` for display.
+    final normalized = widget.items.map((e) {
+      if (e is Society) return e;
+      final name = e?.toString() ?? '';
+      return Society(
+        name: name,
+        description: '',
+        icon: Icons.group,
+        memberCount: 0,
+        rating: 0.0,
+        imageUrl: '',
+      );
+    }).toList();
+
     if (q.isEmpty) {
-      _results = List.from(widget.items);
+      _results = normalized;
     } else {
-      _results = widget.items
-          .where((i) => i.toLowerCase().contains(q))
+      _results = normalized
+          .where((s) => s.name.toLowerCase().contains(q) || s.description.toLowerCase().contains(q))
           .toList();
     }
   }
@@ -1979,12 +1991,30 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               itemCount: _results.length,
               separatorBuilder: (_, __) => const Divider(),
               itemBuilder: (context, index) {
-                final item = _results[index];
+                final s = _results[index];
                 return ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.groups)),
-                  title: Text(item),
-                  subtitle: const Text('Placeholder description'),
+                  leading: CircleAvatar(
+                    backgroundImage:
+                        s.imageUrl.isNotEmpty ? NetworkImage(s.imageUrl) : null,
+                    child: s.imageUrl.isEmpty ? Icon(s.icon) : null,
+                  ),
+                  title: Text(s.name),
+                  subtitle: Text(
+                      '${s.memberCount} members · ${s.rating.toStringAsFixed(1)} ★'),
                   onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SocietyDetailsPage(
+                        name: s.name,
+                        description: s.description,
+                        imageUrl: s.imageUrl,
+                        icon: s.icon,
+                        userEmail: null,
+                        userAuthToken: null,
+                        initialJoined: false,
+                        initialMemberCount: s.memberCount,
+                        initialAverageRating: s.rating,
+                      ),
+                    ));
                   },
                 );
               },
