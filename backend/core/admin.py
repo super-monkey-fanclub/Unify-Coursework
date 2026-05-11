@@ -70,6 +70,8 @@ class SocietyAdmin(admin.ModelAdmin):
 class MembershipAdmin(admin.ModelAdmin):
     list_display = ("user_email", "user_up_number", "society", "role", "created_at", "duration")
     list_select_related = ("user", "society")
+    # Allow searching memberships by user email, UP number, first name, or society name
+    search_fields = ("user__email", "user__up_number", "user__first_name", "society__name")
 
     def user_email(self, obj):
         return obj.user.email
@@ -111,7 +113,8 @@ class ReviewReactionAdmin(admin.ModelAdmin):
 
 class UserAdmin(admin.ModelAdmin):
     list_display = ("email", "up_number", "first_name", "admin_status", "is_active")
-    search_fields = ("email", "up_number", "first_name")
+    # Remove global search from UserAdmin — searches are available on Memberships
+    search_fields = ()
     list_filter = ("is_staff", "is_superuser", "is_active")
     ordering = ("email",)
 
