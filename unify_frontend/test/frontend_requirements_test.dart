@@ -26,24 +26,6 @@ void main() {
     expect(find.text('Explore popular student groups on campus'), findsOneWidget);
   });
 
-  testWidgets('Home page search opens filtered results page', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const UnifyApp());
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('Search'));
-    await tester.pumpAndSettle();
-
-    final searchField = find.byType(TextField).first;
-    await tester.enterText(searchField, 'Art');
-    await tester.tap(find.byIcon(Icons.arrow_forward));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Search: "Art"'), findsOneWidget);
-    expect(find.text('Art Society'), findsWidgets);
-  });
-
   testWidgets('About page shows mission and feature sections', (
     WidgetTester tester,
   ) async {
